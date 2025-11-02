@@ -6,7 +6,6 @@ const authMiddleware = (requiredRole = null) => {
   return (req, res, next) => {
 
     try {
-      console.log('Hello')
       let token = null;
 
       // Check cookie

@@ -6,9 +6,9 @@ import Navbar from "./User/components/Navbar"
 import CartList from "./User/pages/CartList"
 import ProductDetailPage from "./User/pages/ProductDetailPage"
 import Footer from "./User/components/Footer"
-// import  {AdminDashboard}  from "./Admin/pages/AdminDashboard"
 import ProfilePage from "./User/pages/ProfilePage"
 import OrderPage from "./User/pages/OrderPage"
+import AdminPanel from "./Admin/pages/adminpanel"
 
 function App() {
   const location = useLocation();
@@ -20,7 +20,7 @@ function App() {
       
       <Routes>
         <Route path="/" element={<Home />} />
-        {/* <Route path="/admin" element={<AdminDashboard/>} /> */}
+        <Route path="/admin" element={<AdminPanel/>} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/otp" element={<Otp />} />
         <Route path="/cartpage" element={<CartList />} />
