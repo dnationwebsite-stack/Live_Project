@@ -67,8 +67,8 @@ export function ProductManagement() {
 
       if (formData.image instanceof File) data.append("image", formData.image);
 
-      if (editingId) await updateProduct(editingId, data, token);
-      else await addProduct(data, token);
+      if (editingId) await updateProduct(editingId, data);
+      else await addProduct(data);
 
       toast.success(editingId ? "Product updated!" : "Product added!");
 
@@ -119,7 +119,7 @@ export function ProductManagement() {
 
   const handleDelete = async (id) => {
     if (confirm("Are you sure to delete?")) {
-      await deleteProduct(id, token);
+      await deleteProduct(id);
       toast.success("Deleted!");
     }
   };
@@ -323,9 +323,9 @@ export function ProductManagement() {
       {/* Product List */}
       <div className="grid gap-4">
         {products.length > 0 ? (
-          products.map((product) => (
+          products.map((product, index) => (
             <div
-              key={product._id}
+              key={product._id || index}
               className="p-4 border rounded flex justify-between items-center gap-4 hover:shadow-md"
             >
               {product.image && (

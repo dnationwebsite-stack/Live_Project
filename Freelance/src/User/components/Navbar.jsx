@@ -387,6 +387,15 @@ export default function UrbanMonkeyHeader() {
                   transformOrigin={{ horizontal: "right", vertical: "top" }}
                   anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
                 >
+
+                   <MenuItem
+                    onClick={() => {
+                      navigate("/");
+                      setProfileAnchor(null);
+                    }}
+                  >
+                    🏠 Home
+                  </MenuItem>
                   <MenuItem
                     onClick={() => {
                       navigate("/profile");
@@ -467,16 +476,16 @@ export default function UrbanMonkeyHeader() {
                     <React.Fragment key={item.productId?._id || item.productId || index}>
                       <ListItem>
                         <img
-                          src={item.productId.images?.[0]}
-                          alt={item.productId.name}
+                          src={item.productId?.image || ""}
+                          alt={item.productId?.name || ""}
                           style={{ width: 60, height: 60, marginRight: 12, borderRadius: 8 }}
                         />
                         <ListItemText
-                          primary={item.productId.name}
+                          primary={item.productId?.name || ""}
                           secondary={
                             <>
                               <Typography component="span" variant="body2" color="text.primary">
-                                ₹{item.productId.price}
+                                ₹{item.productId?.price || ""}
                               </Typography>
                               <br />
                               <Typography
@@ -485,7 +494,7 @@ export default function UrbanMonkeyHeader() {
                                 color="text.secondary"
                                 sx={{ fontSize: 13 }}
                               >
-                                Size: <strong>{item.productId.size || "N/A"}</strong>
+                                Size: <strong>{item.productId?.size || "N/A"}</strong>
                               </Typography>
                             </>
                           }
@@ -493,7 +502,7 @@ export default function UrbanMonkeyHeader() {
                         <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
                           <IconButton
                             onClick={() =>
-                              updateQuantity(item.productId._id, item.quantity - 1)
+                              updateQuantity(item.productId?._id, item.quantity - 1)
                             }
                           >
                             <RemoveIcon />
@@ -519,41 +528,68 @@ export default function UrbanMonkeyHeader() {
             {/* Review Step */}
             {cartStep === "review" && (
               <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: "bold" }}>Choose Your Shipping Address</Typography>
-                {shippingAddresses.length === 0 ? (
-                  <Typography align="center" color="text.secondary">No saved addresses found.</Typography>
-                ) : (
-                  shippingAddresses.map((addr, index) => {
-                    const addrId = addr._id || addr.id || index; // fallback id
-                    const isSelected = selectedShippingAddressId === addrId;
+                <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                  Choose Your Shipping Address
+                </Typography>
 
-                    return (
-                      <Box
-                        key={addrId} // ✅ ensure always unique key
-                        onClick={() => handleSelectAddress(addr)}
-                        sx={{
-                          borderRadius: 3,
-                          border: isSelected ? "2px solid black" : "1px solid #ddd",
-                          p: 2,
-                          cursor: "pointer",
-                          transition: "0.2s",
-                          "&:hover": { borderColor: "black" },
-                        }}
-                      >
-                        <Typography variant="subtitle1">{addr.fullName}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {addr.line1}, {addr.city}, {addr.state} - {addr.postalCode}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          📞 {addr.phoneNumber}
-                        </Typography>
-                        {isSelected && <Typography variant="caption" color="green">✓ Selected</Typography>}
-                      </Box>
-                    );
-                  })
+                {shippingAddresses
+                  ?.filter(
+                    (addr) =>
+                      addr &&
+                      (addr.fullName?.trim() ||
+                        addr.line1?.trim() ||
+                        addr.city?.trim() ||
+                        addr.phoneNumber?.trim())
+                  ).length === 0 ? (
+                  <Typography align="center" color="text.secondary">
+                    No saved addresses found.
+                  </Typography>
+                ) : (
+                  shippingAddresses
+                    ?.filter(
+                      (addr) =>
+                        addr &&
+                        (addr.fullName?.trim() ||
+                          addr.line1?.trim() ||
+                          addr.city?.trim() ||
+                          addr.phoneNumber?.trim())
+                    )
+                    .map((addr, index) => {
+                      const addrId = addr._id || addr.id || index;
+                      const isSelected = selectedShippingAddressId === addrId;
+
+                      return (
+                        <Box
+                          key={addrId}
+                          onClick={() => handleSelectAddress(addr)}
+                          sx={{
+                            borderRadius: 3,
+                            border: isSelected ? "2px solid black" : "1px solid #ddd",
+                            p: 2,
+                            cursor: "pointer",
+                            transition: "0.2s",
+                            "&:hover": { borderColor: "black" },
+                          }}
+                        >
+                          <Typography variant="subtitle1">{addr.fullName}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {addr.line1}, {addr.city}, {addr.state} - {addr.postalCode}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            📞 {addr.phoneNumber}
+                          </Typography>
+                          {isSelected && (
+                            <Typography variant="caption" color="green">
+                              ✓ Selected
+                            </Typography>
+                          )}
+                        </Box>
+                      );
+                    })
                 )}
               </Box>
             )}
+
 
             {/* Add Address Step */}
             {cartStep === "address" && (

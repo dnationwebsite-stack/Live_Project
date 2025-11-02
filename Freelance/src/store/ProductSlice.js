@@ -47,13 +47,16 @@ const useProductStore = create(
       addProduct: async (newProduct) => {
         try {
           set({ loading: true, error: null });
+
           const res = await fetch(`${API_BASE}/product/addProduct`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: formData,
+            credentials: "include", // ✅ sends the cookie token automatically
+            body: JSON.stringify(newProduct), // ✅ correct body
           });
+
           if (!res.ok) throw new Error("Failed to add product");
+
           const data = await res.json();
           set({ products: [...get().products, data], loading: false });
         } catch (err) {

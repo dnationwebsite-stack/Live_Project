@@ -1,50 +1,140 @@
 "use client";
 import React from "react";
-import { Box, Card, Typography, Divider, Chip } from "@mui/material";
-import useOrderStore from "../../store/OrderSlice";
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Divider } from "@mui/material";
 
 export default function OrderPage() {
-  const { orders } = useOrderStore();
+  const orders = [
+    {
+      id: "ORD12345",
+      date: "2025-11-02",
+      address: "221B Baker Street, London",
+      status: "Delivered",
+      total: 2999,
+      products: [
+        { name: "Classic White Shirt", qty: 2, size: "M", price: 899 },
+        { name: "Denim Jeans", qty: 1, size: "32", price: 1200 },
+      ],
+    },
+    {
+      id: "ORD12346",
+      date: "2025-10-28",
+      address: "742 Evergreen Terrace, Springfield",
+      status: "Pending",
+      total: 1899,
+      products: [
+        { name: "Black Hoodie", qty: 1, size: "L", price: 999 },
+        { name: "Joggers", qty: 1, size: "M", price: 900 },
+      ],
+    },
+  ];
 
   return (
-    <Box className="min-h-screen bg-gray-50 p-6 md:p-12 mt-20">
-      <Box className="max-w-5xl mx-auto flex flex-col gap-6">
-        <Typography variant="h4" sx={{ fontWeight: "bold", mb: 4 }}>My Orders</Typography>
+    <Box className="min-h-screen bg-gray-50 p-8 mt-20">
+      <Box className="max-w-7xl mx-auto">
+        <Typography
+          variant="h4"
+          sx={{ fontWeight: "bold", mb: 4, letterSpacing: 0.5 }}
+        >
+          My Orders
+        </Typography>
 
         {orders.length === 0 ? (
-          <Typography align="center" color="text.secondary">You have no orders yet.</Typography>
+          <Typography align="center" color="text.secondary">
+            You have no orders yet.
+          </Typography>
         ) : (
-          orders.map((order) => (
-            <Card key={order.id} className="p-4 shadow-md rounded-xl bg-white">
-              <Box className="flex justify-between items-center mb-2">
-                <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>Order ID: {order.id}</Typography>
-                <Chip
-                  label={order.status}
-                  color={order.status === "Delivered" ? "success" :
-                         order.status === "Pending" ? "warning" : "error"}
-                />
-              </Box>
+          <Paper
+            elevation={0}
+            sx={{
+              border: "1px solid #e0e0e0",
+              borderRadius: 2,
+              overflow: "hidden",
+            }}
+          >
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: "#f9f9f9" }}>
+                    <TableCell sx={{ fontWeight: "bold" }}>Order ID</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Address</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Product Details</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Qty</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Size</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Price</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>
+                      Total
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
 
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Date: {order.date}</Typography>
+                <TableBody>
+                  {orders.map((order) =>
+                    order.products.map((product, idx) => (
+                      <TableRow key={`${order.id}-${idx}`} hover>
+                        {idx === 0 ? (
+                          <>
+                            <TableCell rowSpan={order.products.length}>
+                              {order.id}
+                            </TableCell>
+                            <TableCell rowSpan={order.products.length}>
+                              {order.date}
+                            </TableCell>
+                            <TableCell
+                              rowSpan={order.products.length}
+                              sx={{ whiteSpace: "pre-wrap" }}
+                            >
+                              {order.address}
+                            </TableCell>
+                          </>
+                        ) : null}
 
-              <Divider sx={{ mb: 2 }} />
+                        <TableCell>{product.name}</TableCell>
+                        <TableCell>{product.qty}</TableCell>
+                        <TableCell>{product.size}</TableCell>
+                        <TableCell>₹{product.price}</TableCell>
 
-              <Box className="flex flex-col gap-1 mb-2">
-                {order.products.map((p, index) => (
-                  <Box key={index} className="flex justify-between">
-                    <Typography>{p.name} x{p.qty}</Typography>
-                    <Typography>₹{p.price * p.qty}</Typography>
-                  </Box>
-                ))}
-              </Box>
+                        {idx === 0 ? (
+                          <>
+                            <TableCell rowSpan={order.products.length}>
+                              <Chip
+                                label={order.status}
+                                size="small"
+                                sx={{
+                                  backgroundColor:
+                                    order.status === "Delivered"
+                                      ? "#e8f5e9"
+                                      : order.status === "Pending"
+                                      ? "#fff8e1"
+                                      : "#ffebee",
+                                  color:
+                                    order.status === "Delivered"
+                                      ? "#2e7d32"
+                                      : order.status === "Pending"
+                                      ? "#f9a825"
+                                      : "#c62828",
+                                  fontWeight: "bold",
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell
+                              rowSpan={order.products.length}
+                              sx={{ textAlign: "right", fontWeight: "bold" }}
+                            >
+                              ₹{order.total}
+                            </TableCell>
+                          </>
+                        ) : null}
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
 
-              <Divider sx={{ my: 2 }} />
-
-              <Typography variant="h6" sx={{ fontWeight: "bold", textAlign: "right" }}>
-                Total: ₹{order.total}
-              </Typography>
-            </Card>
-          ))
+            <Divider />
+          </Paper>
         )}
       </Box>
     </Box>
