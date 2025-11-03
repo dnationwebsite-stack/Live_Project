@@ -32,21 +32,6 @@ export function CustomerManagement() {
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({ name: "", email: "", phone: "" })
 
-  const handleAddCustomer = () => {
-    if (formData.name && formData.email && formData.phone) {
-      setCustomers([
-        ...customers,
-        {
-          id: Date.now().toString(),
-          ...formData,
-          joinDate: new Date().toISOString().split("T")[0],
-          totalOrders: 0,
-        },
-      ])
-      setFormData({ name: "", email: "", phone: "" })
-      setShowForm(false)
-    }
-  }
 
   const handleDelete = (id) => {
     setCustomers(customers.filter((c) => c.id !== id))
@@ -56,48 +41,10 @@ export function CustomerManagement() {
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-3xl font-bold text-foreground">Customers</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded"
-        >
-          <Plus size={20} /> Add Customer
-        </button>
+     
       </div>
 
-      {showForm && (
-        <div className="p-6 mb-8 border rounded shadow">
-          <h3 className="text-xl font-bold text-foreground mb-4">Add New Customer</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input
-              placeholder="Full Name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="border p-2 rounded"
-            />
-            <input
-              placeholder="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="border p-2 rounded"
-            />
-            <input
-              placeholder="Phone"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="border p-2 rounded"
-            />
-          </div>
-          <div className="flex gap-3 mt-4">
-            <button onClick={handleAddCustomer} className="px-4 py-2 bg-green-500 text-white rounded">
-              Add
-            </button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded">
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+    
 
       <div className="grid gap-4">
         {customers.map((customer) => (

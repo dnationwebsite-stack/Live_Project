@@ -117,7 +117,8 @@ const updateProduct = async (req, res) => {
     if (!product) return res.status(404).json({ success: false, message: "Product not found" });
 
     const { name, brand, price, category, subcategory, sizes, description } = req.body;
-
+console.log(product)
+console.log("first", name)
     if (name) product.name = name;
     if (brand) product.brand = brand;
     if (price) product.price = price;

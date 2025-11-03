@@ -1,16 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Edit2, Trash2, Plus, Upload } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Edit2, Trash2, Plus, Upload, Search, X } from "lucide-react";
 import useProductStore from "../../store/ProductSlice";
 import toast, { Toaster } from "react-hot-toast";
 
 export function ProductManagement() {
-  const { products, fetchProducts, addProduct, updateProduct, deleteProduct, loading } = useProductStore();
+  const { products, fetchProducts, addProduct, updateProduct, deleteProduct, loading } =
+    useProductStore();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [preview, setPreview] = useState(null); // ✅ for image preview blob
+  const [preview, setPreview] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const formRef = useRef(null);
+
   const [formData, setFormData] = useState({
     name: "",
     price: "",
@@ -23,12 +27,10 @@ export function ProductManagement() {
     status: "Active",
   });
 
-
   useEffect(() => {
     fetchProducts();
   }, []);
 
-  // ✅ Clean blob URL when image changes
   useEffect(() => {
     return () => {
       if (preview) URL.revokeObjectURL(preview);
@@ -64,7 +66,6 @@ export function ProductManagement() {
       data.append("description", formData.description.trim());
       data.append("sizes", JSON.stringify(formData.sizes));
       data.append("status", status);
-
       if (formData.image instanceof File) data.append("image", formData.image);
 
       if (editingId) await updateProduct(editingId, data);
@@ -93,29 +94,24 @@ export function ProductManagement() {
   };
 
   const handleEdit = (product) => {
-  setFormData({
-    name: product.name,
-    price: product.price,
-    category: product.category,
-    subcategory: product.subcategory,
-    brand: product.brand,
-    description: product.description,
-    image: product.image || "",
-    sizes: product.sizes.map(s => ({ ...s, id: s.id || Date.now() + Math.random() })),
-    status: product.status,
-  });
-
-  setEditingId(product._id);
-  setShowForm(true);
-
-  // ✅ Scroll to top *after* form is visible
-  setTimeout(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
+    setFormData({
+      name: product.name,
+      price: product.price,
+      category: product.category,
+      subcategory: product.subcategory,
+      brand: product.brand,
+      description: product.description,
+      image: product.image || "",
+      sizes: product.sizes.map((s) => ({ ...s, id: s.id || Date.now() + Math.random() })),
+      status: product.status,
     });
-  }, 100); // slight delay ensures DOM updated
-};
+
+    setEditingId(product._id);
+    setShowForm(true);
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
+  };
 
   const handleDelete = async (id) => {
     if (confirm("Are you sure to delete?")) {
@@ -128,7 +124,7 @@ export function ProductManagement() {
     const file = e.target.files?.[0];
     if (file) {
       setFormData({ ...formData, image: file });
-      setPreview(URL.createObjectURL(file)); // ✅ local preview
+      setPreview(URL.createObjectURL(file));
     }
   };
 
@@ -138,224 +134,266 @@ export function ProductManagement() {
       sizes: [...formData.sizes, { id: Date.now() + Math.random(), size: "", stock: 0 }],
     });
 
+  // ✅ Filter products by search
+  const filteredProducts = products.filter((p) =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="p-8">
+    <div className="p-8 relative">
       <Toaster position="top-right" />
 
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-3xl font-bold text-foreground">Products</h2>
-        <button
-          onClick={() => {
-            setShowForm(!showForm);
-            setEditingId(null);
-            setFormData({
-              name: "",
-              price: "",
-              category: "Jersey",
-              subcategory: "",
-              brand: "",
-              description: "",
-              image: "",
-              sizes: [],
-              status: "Active",
-            });
-            setPreview(null);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded"
-        >
-          <Plus size={20} /> Add Product
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Search product..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border rounded-lg w-64 focus:ring-2 focus:ring-blue-400 outline-none"
+            />
+          </div>
+          <button
+            onClick={() => {
+              setShowForm(true);
+              setEditingId(null);
+              setFormData({
+                name: "",
+                price: "",
+                category: "Jersey",
+                subcategory: "",
+                brand: "",
+                description: "",
+                image: "",
+                sizes: [],
+                status: "Active",
+              });
+              setPreview(null);
+              setTimeout(() => {
+                formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }, 150);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+          >
+            <Plus size={20} /> Add Product
+          </button>
+        </div>
       </div>
 
+      {/* Modal Form */}
       {showForm && (
-        <div className="p-6 mb-8 border rounded shadow">
-          <h3 className="text-xl font-bold mb-4">
-            {editingId ? "Edit Product" : "Add New Product"}
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <input
-              placeholder="Product Name"
-              value={formData.name || ""}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="border p-2 rounded"
-            />
-            <input
-              placeholder="Price"
-              type="number"
-              value={formData.price || ""}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              className="border p-2 rounded"
-            />
-            <input
-              placeholder="Category"
-              value={formData.category || ""}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="border p-2 rounded"
-            />
-            <input
-              placeholder="Subcategory"
-              value={formData.subcategory || ""}
-              onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
-              className="border p-2 rounded"
-            />
-            <input
-              placeholder="Brand"
-              value={formData.brand || ""}
-              onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-              className="border p-2 rounded"
-            />
-            <input
-              placeholder="Description"
-              value={formData.description || ""}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="border p-2 rounded"
-            />
-          </div>
-
-          {/* Image Upload */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Product Image</label>
-            <div className="flex gap-4 items-start">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-                id="image-upload"
-              />
-              <label
-                htmlFor="image-upload"
-                className="flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer hover:bg-muted transition-colors"
+        <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-black/40">
+          <div
+            ref={formRef}
+            className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-gray-200"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-2xl font-semibold">
+                {editingId ? "Edit Product" : "Add Product"}
+              </h3>
+              <button
+                onClick={() => setShowForm(false)}
+                className="text-gray-500 hover:text-red-500 transition"
               >
-                <Upload size={20} /> <span className="text-sm">Click to upload image</span>
-              </label>
-
-              {(preview || formData.image) && (
-                <img
-                  src={
-                    preview
-                      ? preview
-                      : typeof formData.image === "string"
-                      ? formData.image
-                      : URL.createObjectURL(formData.image)
-                  }
-                  alt="Preview"
-                  className="w-24 h-24 object-cover rounded-lg"
-                />
-              )}
+                <X size={22} />
+              </button>
             </div>
-          </div>
 
-          {/* Sizes */}
-          <div className="mb-4">
-            <h4 className="font-bold mb-2">Sizes & Stock</h4>
-            {formData.sizes.map((s) => (
-              <div key={s.id} className="flex gap-2 mb-2">
-                <input
-                  placeholder="Size"
-                  value={s.size || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      sizes: formData.sizes.map((item) =>
-                        item.id === s.id ? { ...item, size: e.target.value } : item
-                      ),
-                    })
-                  }
-                  className="border p-2 rounded w-1/2"
-                />
-                <input
-                  placeholder="Stock"
-                  type="number"
-                  value={s.stock ?? ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      sizes: formData.sizes.map((item) =>
-                        item.id === s.id
-                          ? { ...item, stock: Number(e.target.value) }
-                          : item
-                      ),
-                    })
-                  }
-                  className="border p-2 rounded w-1/2"
-                />
-                <button
-                  onClick={() =>
-                    setFormData({
-                      ...formData,
-                      sizes: formData.sizes.filter((item) => item.id !== s.id),
-                    })
-                  }
-                  className="px-2 bg-red-500 text-white rounded"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <input
+                placeholder="Product Name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="border p-2 rounded-lg"
+              />
+              <input
+                placeholder="Price"
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                className="border p-2 rounded-lg"
+              />
+              <input
+                placeholder="Category"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="border p-2 rounded-lg"
+              />
+              <input
+                placeholder="Subcategory"
+                value={formData.subcategory}
+                onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                className="border p-2 rounded-lg"
+              />
+              <input
+                placeholder="Brand"
+                value={formData.brand}
+                onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                className="border p-2 rounded-lg"
+              />
+              <input
+                placeholder="Description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="border p-2 rounded-lg"
+              />
+            </div>
+
+            {/* Image Upload */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Product Image</label>
+              <div className="flex items-center gap-4">
+                <label
+                  htmlFor="image-upload"
+                  className="flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer hover:bg-blue-50 transition-colors w-1/2"
                 >
-                  X
-                </button>
+                  <Upload size={20} /> Upload Image
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="image-upload"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+                {(preview || formData.image) && (
+                  <img
+                    src={
+                      preview
+                        ? preview
+                        : typeof formData.image === "string"
+                        ? formData.image
+                        : URL.createObjectURL(formData.image)
+                    }
+                    alt="Preview"
+                    className="w-24 h-24 object-cover rounded-lg border"
+                  />
+                )}
               </div>
-            ))}
-            <button
-              onClick={addSize}
-              className="px-3 py-1 bg-blue-500 text-white rounded text-sm"
-            >
-              Add Size
-            </button>
-          </div>
+            </div>
 
-          <div className="flex gap-3">
-            <button
-              onClick={handleAddProduct}
-              disabled={loading}
-              className="px-4 py-2 bg-green-500 text-white rounded"
-            >
-              {loading ? "Saving..." : "Save"}
-            </button>
-            <button
-              onClick={() => setShowForm(false)}
-              className="px-4 py-2 border rounded"
-            >
-              Cancel
-            </button>
+            {/* Sizes */}
+            <div className="mb-4">
+              <h4 className="font-semibold mb-2">Sizes & Stock</h4>
+              {formData.sizes.map((s) => (
+                <div key={s.id} className="flex gap-2 mb-2">
+                  <input
+                    placeholder="Size"
+                    value={s.size || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        sizes: formData.sizes.map((item) =>
+                          item.id === s.id ? { ...item, size: e.target.value } : item
+                        ),
+                      })
+                    }
+                    className="border p-2 rounded-lg w-1/2"
+                  />
+                  <input
+                    placeholder="Stock"
+                    type="number"
+                    value={s.stock ?? ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        sizes: formData.sizes.map((item) =>
+                          item.id === s.id ? { ...item, stock: Number(e.target.value) } : item
+                        ),
+                      })
+                    }
+                    className="border p-2 rounded-lg w-1/2"
+                  />
+                  <button
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        sizes: formData.sizes.filter((item) => item.id !== s.id),
+                      })
+                    }
+                    className="px-2 bg-red-500 text-white rounded"
+                  >
+                    X
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={addSize}
+                className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+              >
+                Add Size
+              </button>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleAddProduct}
+                disabled={loading}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                {loading ? "Saving..." : "Save"}
+              </button>
+              <button
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2 border rounded-lg hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Product List */}
-      <div className="grid gap-4">
-        {products.length > 0 ? (
-          products.map((product, index) => (
+      <div className="grid gap-4 mt-6">
+        {filteredProducts.length > 0 ? (
+          filteredProducts.map((product) => (
             <div
-              key={product._id || index}
-              className="p-4 border rounded flex justify-between items-center gap-4 hover:shadow-md"
+              key={product._id}
+              className="p-4 border rounded-xl flex justify-between items-center gap-4 hover:shadow-md transition"
             >
               {product.image && (
                 <img
                   src={product.image}
                   alt={product.name}
-                  className="w-20 h-20 object-cover rounded-lg"
+                  className="w-24 h-24 object-cover rounded-xl border"
                 />
               )}
               <div className="flex-1">
-                <h3 className="font-bold">{product.name}</h3>
-                <p className="text-sm">
+                <h3 className="font-bold text-lg">{product.name}</h3>
+                <p className="text-sm text-gray-500">
                   {product.category} / {product.subcategory}
                 </p>
                 <p className="text-sm">
-                  Status: <span className="font-bold">{product.status}</span>
+                  Status:{" "}
+                  <span
+                    className={`font-bold ${
+                      product.status === "Out of Stock"
+                        ? "text-red-500"
+                        : product.status === "Limited"
+                        ? "text-orange-500"
+                        : "text-green-600"
+                    }`}
+                  >
+                    {product.status}
+                  </span>
                 </p>
               </div>
               <div className="flex gap-4 items-center">
                 <div>
-                  <p className="text-sm text-muted-foreground">Price</p>
-                  <p className="font-bold">${product.price}</p>
+                  <p className="text-sm text-gray-500">Price</p>
+                  <p className="font-bold text-lg">${product.price}</p>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <p className="text-sm text-muted-foreground">Sizes & Stock</p>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Sizes</p>
                   <div className="flex gap-2 flex-wrap">
                     {product.sizes?.map((s) => (
                       <span
                         key={s.id || s.size}
-                        className="px-2 py-1 border rounded text-sm"
+                        className="px-2 py-1 border rounded text-xs bg-gray-50"
                       >
                         {s.size}: {s.stock}
                       </span>
@@ -365,13 +403,13 @@ export function ProductManagement() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleEdit(product)}
-                    className="p-2 border rounded"
+                    className="p-2 border rounded-lg hover:bg-blue-50"
                   >
                     <Edit2 size={16} />
                   </button>
                   <button
                     onClick={() => handleDelete(product._id)}
-                    className="p-2 border rounded"
+                    className="p-2 border rounded-lg hover:bg-red-50"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -380,7 +418,7 @@ export function ProductManagement() {
             </div>
           ))
         ) : (
-          <p>No products found</p>
+          <p className="text-center text-gray-500">No products found</p>
         )}
       </div>
     </div>

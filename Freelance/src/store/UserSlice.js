@@ -243,79 +243,109 @@ export const useUserStore = create(
       },
 
       // 🟢 Create Razorpay Order
-      createRazorpayOrder: async (amount) => {
-        const { token } = get();
+     // 🟢 Create Razorpay Order
+createRazorpayOrder: async (amount) => {
+  const { token } = get();
+  try {
+    set({ loading: true, error: null });
+
+    const res = await fetch(`${API_BASE}payment/create-order`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ amount }), // amount in rupees
+    });
+
+    const data = await res.json();
+    if (!res.ok)
+      throw new Error(data.message || "Failed to create Razorpay order");
+
+    console.log("✅ Razorpay Order Created:", data);
+    return data.order; // ✅ Return the order object from response
+  } catch (err) {
+    console.error("❌ Razorpay Order Error:", err);
+    set({ error: err.message });
+    throw err;
+  } finally {
+    set({ loading: false });
+  }
+},
+
+initiateRazorpayPayment: async (amount) => {
+  try {
+    const orderData = await get().createRazorpayOrder(amount);
+
+    const options = {
+      key: process.env.RAZORPAY_KEY_ID || "rzp_test_xxxxxxxxx", // ⚡ Replace with your test key_id
+      amount: orderData.amount,
+      currency: orderData.currency,
+      name: "URBAN MONKEY®",
+      description: "Order Payment",
+      order_id: orderData.id,
+      handler: async function (response) {
+        console.log("✅ Payment Success:", response);
+
         try {
-          set({ loading: true, error: null });
+          const verifyRes = await fetch(
+            `${API_BASE}payment/verify-payment`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${get().token}`,
+              },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            }
+          );
 
-          const res = await fetch(`${API_BASE}payment/create-order`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ amount }),
-          });
+          const data = await verifyRes.json();
+          if (!verifyRes.ok)
+            throw new Error(data.message || "Payment verification failed");
 
-          const data = await res.json();
-          if (!res.ok)
-            throw new Error(data.message || "Failed to create Razorpay order");
-
-          console.log("✅ Razorpay Order Created:", data);
-          return data;
-        } catch (err) {
-          console.error("❌ Razorpay Order Error:", err);
-          set({ error: err.message });
-          throw err;
-        } finally {
-          set({ loading: false });
+          alert("✅ Payment successful and verified!");
+          
+          // ✅ Clear cart after successful payment
+          const { clearCart } = useCartStore.getState();
+          if (clearCart) await clearCart();
+          
+          // ✅ Redirect to orders page or home
+          window.location.href = "/orders";
+          
+        } catch (verifyErr) {
+          console.error("❌ Verification Error:", verifyErr);
+          alert("Payment verification failed: " + verifyErr.message);
         }
       },
-
-      initiateRazorpayPayment: async (amount) => {
-        try {
-          const orderData = await get().createRazorpayOrder(amount);
-
-          const options = {
-            key: "rzp_test_xxxxxxxxx", // ⚡ Replace with your test key_id
-            amount: orderData.amount,
-            currency: orderData.currency,
-            name: "My Store",
-            description: "Order Payment",
-            order_id: orderData.id,
-            handler: async function (response) {
-              console.log("✅ Payment Success:", response);
-
-              const verifyRes = await fetch(
-                `${API_BASE}payment/verify-payment`,
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${get().token}`,
-                  },
-                  body: JSON.stringify(response),
-                }
-              );
-
-              const data = await verifyRes.json();
-              if (!verifyRes.ok)
-                throw new Error(data.message || "Payment verification failed");
-
-              alert("✅ Payment successful and verified!");
-            },
-            theme: {
-              color: "#000", // classic black look
-            },
-          };
-
-          const rzp = new window.Razorpay(options);
-          rzp.open();
-        } catch (err) {
-          console.error("❌ Payment Error:", err);
-          alert("Payment failed: " + err.message);
-        }
+      prefill: {
+        name: get().user?.name || "",
+        email: get().user?.email || "",
+        contact: get().user?.phone || "",
       },
+      theme: {
+        color: "#000000", // Black theme for Urban Monkey
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    
+    rzp.on('payment.failed', function (response) {
+      console.error("❌ Payment Failed:", response.error);
+      alert(`Payment failed: ${response.error.description}`);
+    });
+    
+    rzp.open();
+  } catch (err) {
+    console.error("❌ Payment Error:", err);
+    alert("Payment failed: " + err.message);
+    throw err;
+  }
+},
 
       fetchUsers: async () => {
         try {
@@ -351,7 +381,7 @@ export const useUserStore = create(
 
           const res = await fetch(`${API_BASE}order/my-orders`, {
             method: "GET",
-            credentials: "include", 
+            credentials: "include",
             headers: {
               "Content-Type": "application/json",
             },
@@ -364,12 +394,109 @@ export const useUserStore = create(
 
           const data = await res.json();
 
-         set({ orders: data.orders }); // ya data directly, depends on your API response
-    console.log("✅ Orders fetched:", data);
-  } catch (error) {
-    console.error("❌ Error fetching orders:", error);
-  }
+          set({ orders: data.orders || [], loading: false }); // ya data directly, depends on your API response
+          console.log("✅ Orders fetched:", data);
+        } catch (error) {
+          console.error("❌ Error fetching orders:", error);
+        }
       },
+
+      // 🔹 Fetch all orders (Admin only)
+      fetchAllOrders: async () => {
+        const { token } = get();
+        try {
+          set({ loading: true, error: null });
+
+          const res = await fetch(`${API_BASE}order/all-orders`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: "include",
+          });
+
+          const data = await res.json();
+
+          if (!res.ok)
+            throw new Error(data.message || "Failed to fetch all orders");
+
+          set({ orders: data.orders || [], loading: false });
+          console.log("✅ All orders fetched:", data.orders);
+          return data.orders;
+        } catch (error) {
+          console.error("❌ Error fetching all orders:", error);
+          set({ error: error.message, loading: false });
+        }
+      },
+
+      handleStatusChange: async (orderId, newStatus) => {
+        const { token } = get();
+        try {
+          const res = await fetch(`${API_BASE}order/status/${orderId}`, {
+            method: "PUT",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ status: newStatus }),
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            alert(`Order status updated to ${newStatus}`);
+            await get().fetchUserOrders(); // ✅ refresh list
+          } else {
+            alert(data.message);
+          }
+        } catch (error) {
+          console.error("❌ Update status error:", error);
+        }
+      },
+            // 🟢 DASHBOARD SUMMARY (Admin Dashboard)
+      dashboardStats: {
+        totalProducts: 0,
+        totalOrders: 0,
+        totalCustomers: 0,
+        recentOrders: [],
+      },
+
+      fetchDashboardSummary: async () => {
+        const { token } = get();
+        try {
+          set({ loading: true, error: null });
+
+          const res = await fetch(`${API_BASE}dash/dashboard`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          });
+
+          const data = await res.json();
+
+          if (!res.ok)
+            throw new Error(data.message || "Failed to fetch dashboard summary");
+
+          set({
+            dashboardStats: {
+              totalProducts: data.totalProducts || 0,
+              totalOrders: data.totalOrders || 0,
+              totalCustomers: data.totalCustomers || 0,
+              recentOrders: data.recentOrders || [],
+            },
+            loading: false,
+          });
+
+          console.log("✅ Dashboard Summary:", data);
+          return data;
+        } catch (err) {
+          console.error("❌ Dashboard fetch error:", err);
+          set({ error: err.message, loading: false });
+        }
+      },
+
     }),
     {
       name: "user-storage",

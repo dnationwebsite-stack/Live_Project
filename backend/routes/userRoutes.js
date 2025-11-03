@@ -1,5 +1,5 @@
 const express = require("express");
-const { requestOTP, verifyOTP, logout , getAllUser, getUserAddresses } = require("../controllers/userController");
+const { requestOTP, verifyOTP, logout , getAllUser, getUserAddresses, getAllCustomersWithStats } = require("../controllers/userController");
 const { addAddress, getAddresses, deleteAddress } = require("../controllers/addressController");
 const { authMiddleware } = require("../middlewares/authMiddleware");
 
@@ -12,6 +12,9 @@ router.post("/request-otp", requestOTP);
 router.post("/verify-otp", verifyOTP);
 
 router.post("/logout", logout);
+
+router.get("/stats", getAllCustomersWithStats);
+
 
 router.get("/getAllUser", getAllUser);
 

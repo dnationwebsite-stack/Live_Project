@@ -80,8 +80,9 @@ const placeCODOrder = async (req, res) => {
       console.warn("⚠️ Frontend and backend totals mismatch");
     }
 
-    const shippingCharge = 50;
-    const finalTotal = Math.round(backendTotal + shippingCharge);
+    const shippingCharge = 15;
+    const deliveryCharges=50
+    const finalTotal = Math.round(backendTotal + shippingCharge+deliveryCharges);
 
     cart.totalPrice = finalTotal;
     await cart.save();
@@ -91,7 +92,7 @@ const placeCODOrder = async (req, res) => {
       return res.status(400).json({ message: "No saved address found" });
     }
 
-    const newOrder = await Order.create({
+    const newOrder = await Order.insertOne({
       user: userId,
       shippingAddress: pendingOrder.shippingAddress,
       items: cart.products.map((item) => ({
@@ -107,12 +108,12 @@ const placeCODOrder = async (req, res) => {
       paymentStatus: "pending",
       status: "pending",
     });
+    console.log(newOrder)
 
     cart.products = [];
     cart.totalPrice = 0;
     await cart.save();
 
-    await pendingOrder.deleteOne();
 
     res.status(201).json({
       success: true,
@@ -154,5 +155,59 @@ const getAllUserOrders = async (req, res) => {
   }
 };
 
+// ✅ Get all orders (for admin)
+const getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate("user", "name email") // user info dikhe
+      .populate("items.productId", "name brand price image") // product info
+      .sort({ createdAt: -1 }); // latest first
 
-module.exports = { saveShippingAddress, placeCODOrder, getAllUserOrders };
+    if (!orders.length) {
+      return res.status(404).json({ message: "No orders found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "All orders fetched successfully",
+      totalOrders: orders.length,
+      orders,
+    });
+  } catch (error) {
+    console.error("❌ Error in getAllOrders:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error while fetching all orders",
+    });
+  }
+};
+
+
+const updateOrderStatus = async (req, res) => {
+  try {
+    const { id  } = req.params;
+    const { status } = req.body;
+
+    if (!["pending", "shipping", "delivered", "cancelled"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
+    }
+
+    const order = await Order.findById(id );
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    order.status = status;
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Order status updated to ${status}`,
+      updatedOrder: order,
+    });
+  } catch (error) {
+    console.error("❌ Error updating order status:", error);
+    res.status(500).json({ message: "Server error while updating order status" });
+  }
+};
+
+
+module.exports = { saveShippingAddress, placeCODOrder, getAllUserOrders, updateOrderStatus, getAllOrders };

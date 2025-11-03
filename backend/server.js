@@ -22,7 +22,8 @@ const userRoutes = require("./routes/userRoutes");
 const productRoutes = require("./routes/productRoutes")
 const cartRoutes = require("./routes/cartRoutes")
 const orderRoutes = require("./routes/orderRoutes")
-const paymentRoutes = require("./routes/paymentRoutes")
+const paymentRoutes = require("./routes/paymentRoutes");
+const { getDashboardStats } = require("./controllers/dashboardController");
 
 // Use routes
 app.use("/api/users", userRoutes);
@@ -31,6 +32,7 @@ app.use("/uploads", express.static("uploads"));
 app.use("/api/cart", cartRoutes);
 app.use("/api/order", orderRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/dash", getDashboardStats);
 
 
 const PORT = process.env.PORT || 5000;

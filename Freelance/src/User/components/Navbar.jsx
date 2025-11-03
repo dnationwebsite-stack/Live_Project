@@ -149,6 +149,7 @@ export default function UrbanMonkeyHeader() {
       setLoading(false);
     }
   };
+
   const handleSelectAddress = async (addr) => {
     try {
       console.log("🟩 Selected Address Object:", addr);
@@ -160,7 +161,6 @@ export default function UrbanMonkeyHeader() {
       }
 
       if (typeof saveShippingAddress === "function") {
-
         console.log("🌐 Sending address data to backend:", {
           fullName: addr.fullName,
           phoneNumber: addr.phoneNumber,
@@ -294,7 +294,7 @@ export default function UrbanMonkeyHeader() {
     const groupLink = "https://chat.whatsapp.com/YourGroupInviteLinkHere"; // 🟢 Replace this with your group link
 
     const userConfirmed = window.confirm(
-      "📱 Do you want to open WhatsApp and join our community group?\n\nYou’ll need to grant permission to open WhatsApp."
+      "📱 Do you want to open WhatsApp and join our community group?\n\nYou'll need to grant permission to open WhatsApp."
     );
 
     if (userConfirmed) {
@@ -388,7 +388,6 @@ export default function UrbanMonkeyHeader() {
                   transformOrigin={{ horizontal: "right", vertical: "top" }}
                   anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
                 >
-
                   <MenuItem
                     onClick={() => {
                       navigate("/");
@@ -465,7 +464,6 @@ export default function UrbanMonkeyHeader() {
             <IconButton onClick={() => setIsCartOpen(false)}><CloseIcon /></IconButton>
           </Box>
 
-
           <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
             {/* Cart Step */}
             {cartStep === "cart" && (
@@ -522,7 +520,6 @@ export default function UrbanMonkeyHeader() {
                     </React.Fragment>
                   ))}
                 </List>
-
               )
             )}
 
@@ -591,7 +588,6 @@ export default function UrbanMonkeyHeader() {
               </Box>
             )}
 
-
             {/* Add Address Step */}
             {cartStep === "address" && (
               <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -609,198 +605,194 @@ export default function UrbanMonkeyHeader() {
             )}
 
             {/* Payment Step */}
-            {cartStep === "payment" && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 4,
-                  p: 3,
-                  mt: 2,
-                }}
-              >
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: "bold",
-                    textAlign: "center",
-                    mb: 1,
-                    color: "#222",
-                  }}
-                >
-                  Checkout Summary
-                </Typography>
+            {cartStep === "payment" && (() => {
+              // Calculate amounts at the component level so they're available everywhere
+              const totalAmount = cartItems.reduce(
+                (sum, item) => sum + item.productId.price * item.quantity,
+                0
+              );
+              const shippingCharge = 15;
+              const deliveryCharge = 50;
+              const discount = isAuthenticated && !user?.hasOrdered
+                ? Math.round(totalAmount * 0.05)
+                : 0;
+              const beforeDiscountTotal = totalAmount + shippingCharge + deliveryCharge;
+              const finalAmount = Math.round(beforeDiscountTotal - discount);
 
-                {(() => {
-                  const totalAmount = cartItems.reduce(
-                    (sum, item) => sum + item.productId.price * item.quantity,
-                    0
-                  );
-                  const shippingCharge = 15;
-                  const deliveryCharge = 50;
-                  const discount = isAuthenticated && !user?.hasOrdered
-                    ? Math.round(totalAmount * 0.05)
-                    : 0;
-                  const beforeDiscountTotal = totalAmount + shippingCharge + deliveryCharge;
-                  const finalAmount = Math.round(beforeDiscountTotal - discount);
-
-                  return (
-                    <Box
-                      sx={{
-                        width: "100%",
-                        maxWidth: 480,
-                        p: 3,
-                        borderRadius: 3,
-                        boxShadow: "0px 4px 12px rgba(0,0,0,0.1)",
-                        bgcolor: "white",
-                      }}
-                    >
-                      {/* Price Breakdown */}
-                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                        <Typography sx={{ color: "#555" }}>Subtotal</Typography>
-                        <Typography sx={{ fontWeight: 500 }}>₹{totalAmount}</Typography>
-                      </Box>
-
-                      {discount > 0 && (
-                        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                          <Typography sx={{ color: "#00796b" }}>Welcome Coupon (5% off)</Typography>
-                          <Typography sx={{ color: "#00796b" }}>-₹{discount}</Typography>
-                        </Box>
-                      )}
-
-                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                        <Typography sx={{ color: "#555" }}>Shipping Charges</Typography>
-                        <Typography sx={{ fontWeight: 500 }}>+₹{shippingCharge}</Typography>
-                      </Box>
-
-                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-                        <Typography sx={{ color: "#555" }}>Delivery Charges</Typography>
-                        <Typography sx={{ fontWeight: 500 }}>+₹{deliveryCharge}</Typography>
-                      </Box>
-
-                      {/* Divider */}
-                      <Box sx={{ borderTop: "1px solid #ddd", my: 2 }}></Box>
-
-                      {/* Total Payable */}
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <Box>
-                          <Typography
-                            sx={{
-                              color: "#888",
-                              fontSize: "0.9rem",
-                              textDecoration: "line-through",
-                            }}
-                          >
-                            ₹{beforeDiscountTotal}
-                          </Typography>
-                          <Typography
-                            sx={{
-                              fontWeight: "bold",
-                              fontSize: "1.4rem",
-                              color: "#2e7d32",
-                            }}
-                          >
-                            ₹{finalAmount}
-                          </Typography>
-                        </Box>
-                        <Typography
-                          sx={{
-                            fontSize: "1.1rem",
-                            fontWeight: 600,
-                            color: "#2e7d32",
-                          }}
-                        >
-                          Total Payable
-                        </Typography>
-                      </Box>
-
-                      {/* ✅ You Saved section */}
-                      {discount > 0 && (
-                        <Typography
-                          sx={{
-                            textAlign: "center",
-                            mt: 2,
-                            color: "#00897b",
-                            fontWeight: 500,
-                            fontSize: "0.95rem",
-                          }}
-                        >
-                          🎉 You saved ₹{discount} on this order!
-                        </Typography>
-                      )}
-                    </Box>
-                  );
-                })()}
-
-                {/* Payment Buttons */}
+              return (
                 <Box
                   sx={{
                     display: "flex",
-                    flexDirection: { xs: "column", sm: "row" },
-                    gap: 2,
-                    width: "100%",
-                    maxWidth: 480,
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 4,
+                    p: 3,
+                    mt: 2,
                   }}
                 >
-                  <Button
-                    variant={newAddress.paymentMethod === "cod" ? "contained" : "outlined"}
-                    fullWidth
-                    color="success"
-                    sx={{ py: 1.5, fontWeight: 600 }}
-                    onClick={async () => {
-                      try {
-                        const { cartItems } = useCartStore.getState();
-                        const { placeCODOrder, selectedShippingAddressId, shippingAddresses } = useUserStore.getState();
-
-                        // find the selected address object
-                        const selectedAddr = shippingAddresses.find(a => a.id === selectedShippingAddressId);
-                        if (!selectedAddr) {
-                          alert("Please select a shipping address");
-                          return;
-                        }
-
-                        if ({ ...newAddress.paymentMethod === "cod" }) {
-                          await placeCODOrder({ items: cartItems, address: selectedAddr, });
-                          alert("✅ COD Order placed successfully!");
-                          setIsCartOpen(false);
-                        } else if (newAddress.paymentMethod === "online") {
-                          console.log("💳 Redirecting to online payment...");
-                        } else {
-                          alert("Please select a payment method first!");
-                        }
-                      } catch (err) {
-                        console.error("❌ Order failed:", err);
-                      }
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontWeight: "bold",
+                      textAlign: "center",
+                      mb: 1,
+                      color: "#222",
                     }}
-
                   >
-                    Cash Payment
-                  </Button>
+                    Checkout Summary
+                  </Typography>
 
-
-                  <Button
-                    variant={newAddress.paymentMethod === "online" ? "contained" : "outlined"}
-                    fullWidth
-                    color="success"
-                    onClick={() => {
-                      setNewAddress({ ...newAddress, paymentMethod: "online" });
-                      initiateRazorpayPayment(finalAmount); // 💰 pass total amount from your cart/order
+                  <Box
+                    sx={{
+                      width: "100%",
+                      maxWidth: 480,
+                      p: 3,
+                      borderRadius: 3,
+                      boxShadow: "0px 4px 12px rgba(0,0,0,0.1)",
+                      bgcolor: "white",
                     }}
-                    sx={{ py: 1.5, fontWeight: 600 }}
                   >
-                    Online Payment
-                  </Button>
+                    {/* Price Breakdown */}
+                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                      <Typography sx={{ color: "#555" }}>Subtotal</Typography>
+                      <Typography sx={{ fontWeight: 500 }}>₹{totalAmount}</Typography>
+                    </Box>
+
+                    {discount > 0 && (
+                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                        <Typography sx={{ color: "#00796b" }}>Welcome Coupon (5% off)</Typography>
+                        <Typography sx={{ color: "#00796b" }}>-₹{discount}</Typography>
+                      </Box>
+                    )}
+
+                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                      <Typography sx={{ color: "#555" }}>Shipping Charges</Typography>
+                      <Typography sx={{ fontWeight: 500 }}>+₹{shippingCharge}</Typography>
+                    </Box>
+
+                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                      <Typography sx={{ color: "#555" }}>Delivery Charges</Typography>
+                      <Typography sx={{ fontWeight: 500 }}>+₹{deliveryCharge}</Typography>
+                    </Box>
+
+                    {/* Divider */}
+                    <Box sx={{ borderTop: "1px solid #ddd", my: 2 }}></Box>
+
+                    {/* Total Payable */}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Box>
+                        <Typography
+                          sx={{
+                            color: "#888",
+                            fontSize: "0.9rem",
+                            textDecoration: "line-through",
+                          }}
+                        >
+                          ₹{beforeDiscountTotal}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontWeight: "bold",
+                            fontSize: "1.4rem",
+                            color: "#2e7d32",
+                          }}
+                        >
+                          ₹{finalAmount}
+                        </Typography>
+                      </Box>
+                      <Typography
+                        sx={{
+                          fontSize: "1.1rem",
+                          fontWeight: 600,
+                          color: "#2e7d32",
+                        }}
+                      >
+                        Total Payable
+                      </Typography>
+                    </Box>
+
+                    {/* ✅ You Saved section */}
+                    {discount > 0 && (
+                      <Typography
+                        sx={{
+                          textAlign: "center",
+                          mt: 2,
+                          color: "#00897b",
+                          fontWeight: 500,
+                          fontSize: "0.95rem",
+                        }}
+                      >
+                        🎉 You saved ₹{discount} on this order!
+                      </Typography>
+                    )}
+                  </Box>
+
+                  {/* Payment Buttons */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: { xs: "column", sm: "row" },
+                      gap: 2,
+                      width: "100%",
+                      maxWidth: 480,
+                    }}
+                  >
+                    <Button
+                      variant={newAddress.paymentMethod === "cod" ? "contained" : "outlined"}
+                      fullWidth
+                      color="success"
+                      sx={{ py: 1.5, fontWeight: 600 }}
+                      onClick={async () => {
+                        try {
+                          const { cartItems } = useCartStore.getState();
+                          const { placeCODOrder, selectedShippingAddressId, shippingAddresses } = useUserStore.getState();
+
+                          // find the selected address object
+                          const selectedAddr = shippingAddresses.find(a => a.id === selectedShippingAddressId);
+                          if (!selectedAddr) {
+                            alert("Please select a shipping address");
+                            return;
+                          }
+
+                          if (newAddress.paymentMethod === "cod") {
+                            await placeCODOrder({ items: cartItems, address: selectedAddr });
+                            alert("✅ COD Order placed successfully!");
+                            setIsCartOpen(false);
+                          } else if (newAddress.paymentMethod === "online") {
+                            console.log("💳 Redirecting to online payment...");
+                          } else {
+                            alert("Please select a payment method first!");
+                          }
+                        } catch (err) {
+                          console.error("❌ Order failed:", err);
+                        }
+                      }}
+                    >
+                      Cash Payment
+                    </Button>
+
+                    <Button
+                      variant={newAddress.paymentMethod === "online" ? "contained" : "outlined"}
+                      fullWidth
+                      color="success"
+                      onClick={() => {
+                        setNewAddress({ ...newAddress, paymentMethod: "online" });
+                        initiateRazorpayPayment(finalAmount);
+                      }}
+                      sx={{ py: 1.5, fontWeight: 600 }}
+                    >
+                      Online Payment
+                    </Button>
+                  </Box>
                 </Box>
-              </Box>
-            )}
-
+              );
+            })()}
           </Box>
 
           {/* Footer */}

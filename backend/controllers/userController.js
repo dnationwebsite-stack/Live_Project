@@ -2,6 +2,8 @@
   const generateToken = require("../utils/generateToken");
   const sendEmail = require("../utils/sendEmail");
   const crypto = require("crypto");
+  
+const Order = require("../models/orderModel");
 
   // OTP generator
   const generateOTP = () => crypto.randomInt(100000, 999999).toString();
@@ -137,4 +139,50 @@
     }
   };
 
-  module.exports = { requestOTP, verifyOTP, logout, getAllUser, getUserAddresses  };
+const getAllCustomersWithStats = async (req, res) => {
+  try {
+    const customers = await User.aggregate([
+      {
+        $lookup: {
+          from: "orders", // collection name in MongoDB
+          localField: "_id",
+          foreignField: "user",
+          as: "orders",
+        },
+      },
+      {
+        $addFields: {
+          totalOrders: { $size: "$orders" },
+          totalSpent: { $sum: "$orders.totalAmount" },
+          lastOrderDate: { $max: "$orders.createdAt" },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          email: 1,
+          phone: 1,
+          createdAt: 1,
+          totalOrders: 1,
+          totalSpent: 1,
+          lastOrderDate: 1,
+          status: { $ifNull: ["$status", "Active"] },
+        },
+      },
+      { $sort: { createdAt: -1 } },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      totalCustomers: customers.length,
+      customers,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching customer data:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+
+  module.exports = { requestOTP, verifyOTP, logout, getAllUser, getUserAddresses ,getAllCustomersWithStats };
