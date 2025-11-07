@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Edit2, Trash2, Plus, Upload, Search, X } from "lucide-react";
+import { Edit2, Trash2, Plus, Upload, Search, X, Image as ImageIcon } from "lucide-react";
 import useProductStore from "../../store/ProductSlice";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -11,11 +11,10 @@ export function ProductManagement() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [imagePreviews, setImagePreviews] = useState([]); // ✅ Multiple previews
   const [searchTerm, setSearchTerm] = useState("");
   const formRef = useRef(null);
 
-  // ✅ Dynamic Categories
   const [categories, setCategories] = useState(["Jersey", "Boots"]);
   const [showCategoryInput, setShowCategoryInput] = useState(false);
   const [newCategory, setNewCategory] = useState("");
@@ -27,7 +26,7 @@ export function ProductManagement() {
     subcategory: "",
     brand: "",
     description: "",
-    image: "",
+    images: [], // ✅ Changed to array
     sizes: [],
     status: "Active",
   });
@@ -38,11 +37,10 @@ export function ProductManagement() {
 
   useEffect(() => {
     return () => {
-      if (preview) URL.revokeObjectURL(preview);
+      imagePreviews.forEach(preview => URL.revokeObjectURL(preview));
     };
-  }, [preview]);
+  }, [imagePreviews]);
 
-  // ✅ Add new category
   const handleAddCategory = () => {
     if (newCategory.trim() && !categories.includes(newCategory.trim())) {
       setCategories([...categories, newCategory.trim()]);
@@ -89,13 +87,16 @@ export function ProductManagement() {
         }))
       ));
 
-      if (formData.image instanceof File) {
-        productData.append('image', formData.image);
-      } else if (typeof formData.image === 'string' && formData.image.trim()) {
-        productData.append('image', formData.image);
+      // ✅ Append multiple images
+      if (formData.images && formData.images.length > 0) {
+        formData.images.forEach((image) => {
+          if (image instanceof File) {
+            productData.append('images', image);
+          }
+        });
       }
 
-      console.log('📤 Sending product data');
+      console.log('📤 Sending product data with', formData.images.length, 'images');
 
       if (editingId) {
         await updateProduct(editingId, productData);
@@ -112,11 +113,11 @@ export function ProductManagement() {
         subcategory: "",
         brand: "",
         description: "",
-        image: "",
+        images: [],
         sizes: [],
         status: "Active",
       });
-      setPreview(null);
+      setImagePreviews([]);
       setShowForm(false);
       setEditingId(null);
       
@@ -136,10 +137,15 @@ export function ProductManagement() {
       subcategory: product.subcategory,
       brand: product.brand,
       description: product.description,
-      image: product.image || "",
+      images: product.images || [],
       sizes: product.sizes.map((s) => ({ ...s, id: s.id || Date.now() + Math.random() })),
       status: product.status,
     });
+
+    // Set previews for existing images
+    if (product.images && Array.isArray(product.images)) {
+      setImagePreviews(product.images.map(img => typeof img === 'string' ? img : img.url));
+    }
 
     setEditingId(product._id);
     setShowForm(true);
@@ -155,12 +161,55 @@ export function ProductManagement() {
     }
   };
 
+  // ✅ Handle multiple image uploads
   const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData({ ...formData, image: file });
-      setPreview(URL.createObjectURL(file));
+    const files = Array.from(e.target.files || []);
+    
+    if (files.length === 0) return;
+
+    // Check total images limit (max 10)
+    const currentImageCount = formData.images.length;
+    const totalImages = currentImageCount + files.length;
+
+    if (totalImages > 10) {
+      toast.error("Maximum 10 images allowed per product");
+      return;
     }
+
+    // Check file sizes (max 5MB each)
+    const invalidFiles = files.filter(file => file.size > 5 * 1024 * 1024);
+    if (invalidFiles.length > 0) {
+      toast.error("Each image must be less than 5MB");
+      return;
+    }
+
+    // Add new images to formData
+    setFormData(prev => ({
+      ...prev,
+      images: [...prev.images, ...files]
+    }));
+
+    // Create preview URLs
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setImagePreviews(prev => [...prev, ...newPreviews]);
+
+    toast.success(`${files.length} image(s) added`);
+  };
+
+  // ✅ Remove specific image
+  const removeImage = (index) => {
+    // Revoke URL if it's a blob
+    if (imagePreviews[index]?.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreviews[index]);
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    toast.success("Image removed");
   };
 
   const addSize = () =>
@@ -201,11 +250,11 @@ export function ProductManagement() {
                 subcategory: "",
                 brand: "",
                 description: "",
-                image: "",
+                images: [],
                 sizes: [],
                 status: "Active",
               });
-              setPreview(null);
+              setImagePreviews([]);
               setTimeout(() => {
                 formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
               }, 150);
@@ -262,7 +311,6 @@ export function ProductManagement() {
                 />
               </div>
 
-              {/* ✅ Dynamic Category Dropdown */}
               <div className="relative">
                 <label className="block text-sm font-medium mb-1 text-gray-700">
                   Category *
@@ -283,10 +331,8 @@ export function ProductManagement() {
                       {cat}
                     </option>
                   ))}
-                  {/* <option value="__add_new__">+ Add New Category</option> */}
                 </select>
 
-                {/* Add New Category Input */}
                 {showCategoryInput && (
                   <div className="absolute top-full left-0 right-0 mt-2 p-3 bg-white border rounded-lg shadow-lg z-10">
                     <div className="flex gap-2">
@@ -345,7 +391,6 @@ export function ProductManagement() {
                 />
               </div>
 
-              {/* ✅ Description as Textarea - spans 2 columns */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1 text-gray-700">
                   Description *
@@ -360,37 +405,59 @@ export function ProductManagement() {
               </div>
             </div>
 
-            {/* Image Upload */}
+            {/* ✅ Multiple Image Upload Section */}
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Product Image</label>
-              <div className="flex items-center gap-4">
+              <label className="block text-sm font-medium mb-2">
+                Product Images ({imagePreviews.length}/10)
+              </label>
+              
+              <div className="border-2 border-dashed rounded-lg p-4 mb-3">
                 <label
-                  htmlFor="image-upload"
-                  className="flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer hover:bg-blue-50 transition-colors w-1/2"
+                  htmlFor="images-upload"
+                  className="flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-blue-50 transition-colors py-4"
                 >
-                  <Upload size={20} /> Upload Image
+                  <ImageIcon size={32} className="text-gray-400" />
+                  <span className="text-sm text-gray-600">
+                    Click to upload images (Max 10, 5MB each)
+                  </span>
+                  <span className="text-xs text-gray-400">JPG, PNG, GIF, WebP</span>
                 </label>
                 <input
                   type="file"
                   accept="image/*"
-                  id="image-upload"
+                  id="images-upload"
                   className="hidden"
+                  multiple
                   onChange={handleImageUpload}
                 />
-                {(preview || formData.image) && (
-                  <img
-                    src={
-                      preview
-                        ? preview
-                        : typeof formData.image === "string"
-                        ? formData.image
-                        : URL.createObjectURL(formData.image)
-                    }
-                    alt="Preview"
-                    className="w-24 h-24 object-cover rounded-lg border"
-                  />
-                )}
               </div>
+
+              {/* Image Previews Grid */}
+              {imagePreviews.length > 0 && (
+                <div className="grid grid-cols-4 gap-3">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={14} />
+                      </button>
+                      {index === 0 && (
+                        <span className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                          Primary
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Sizes */}
@@ -473,13 +540,31 @@ export function ProductManagement() {
               key={`${product._id}-${index}`} 
               className="p-4 border rounded-xl flex justify-between items-center gap-4 hover:shadow-md transition"
             >
-              {product.image && (
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-24 h-24 object-cover rounded-xl border"
-                />
-              )}
+              {/* ✅ Display multiple images */}
+              <div className="flex gap-2">
+                {product.images && product.images.length > 0 ? (
+                  product.images.slice(0, 3).map((img, idx) => (
+                    <img
+                      key={idx}
+                      src={typeof img === 'string' ? img : img.url}
+                      alt={`${product.name} ${idx + 1}`}
+                      className="w-20 h-20 object-cover rounded-lg border"
+                    />
+                  ))
+                ) : product.image ? (
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-20 h-20 object-cover rounded-lg border"
+                  />
+                ) : null}
+                {product.images && product.images.length > 3 && (
+                  <div className="w-20 h-20 flex items-center justify-center bg-gray-100 rounded-lg border text-sm text-gray-600">
+                    +{product.images.length - 3}
+                  </div>
+                )}
+              </div>
+              
               <div className="flex-1">
                 <h3 className="font-bold text-lg">{product.name}</h3>
                 <p className="text-sm text-gray-500">
