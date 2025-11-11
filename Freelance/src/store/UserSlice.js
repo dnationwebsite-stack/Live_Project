@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import cartStore from "./CartSlice";
 
 const API_BASE = "http://localhost:5000/api/"; // backend URL
 
@@ -272,109 +273,171 @@ export const useUserStore = create(
           set({ loading: false });
         }
       },
+      // ✅ Update function signature to accept cart data
+      // ✅ Update function signature to accept cart data (with fallback)
+initiateRazorpayPayment: async (amount, cartItems = null, shippingAddress = null) => {
+  try {
+    if (!window.Razorpay) {
+      throw new Error(
+        "Razorpay SDK not loaded. Please check your internet connection."
+      );
+    }
 
-      initiateRazorpayPayment: async (amount) => {
-        try {
-          // ✅ Check if Razorpay is loaded
-          if (!window.Razorpay) {
-            throw new Error(
-              "Razorpay SDK not loaded. Please check your internet connection."
-            );
-          }
+    const orderData = await get().createRazorpayOrder(amount);
 
-          const orderData = await get().createRazorpayOrder(amount);
+    return new Promise((resolve, reject) => {
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "DRIP NATION®",
+        description: "Order Payment",
+        order_id: orderData.id,
+        handler: async function (response) {
+          console.log("✅ Payment Success:", response);
 
-          // ✅ Return a promise that resolves with success status
-          return new Promise((resolve, reject) => {
-            const options = {
-              // ✅ Import from config file
-              key: "rzp_test_xxxxxxxxx", // 🔴 REPLACE THIS WITH YOUR ACTUAL KEY
-              amount: orderData.amount,
-              currency: orderData.currency,
-              name: "URBAN MONKEY®",
-              description: "Order Payment",
-              order_id: orderData.id,
-              handler: async function (response) {
-                console.log("✅ Payment Success:", response);
+          try {
+            let items = cartItems;
+            let address = shippingAddress;
 
-                try {
-                  const verifyRes = await fetch(
-                    `${API_BASE}payment/verify-payment`,
-                    {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${get().token}`,
-                      },
-                      body: JSON.stringify({
-                        razorpay_order_id: response.razorpay_order_id,
-                        razorpay_payment_id: response.razorpay_payment_id,
-                        razorpay_signature: response.razorpay_signature,
-                      }),
-                    }
-                  );
+            if (!items) {
+              const savedCart = localStorage.getItem('cart');
+              if (savedCart) {
+                const cartData = JSON.parse(savedCart);
+                items = cartData.items || cartData;
+                console.log("📦 Got items from localStorage:", items);
+              }
+            }
 
-                  const data = await verifyRes.json();
-                  if (!verifyRes.ok)
-                    throw new Error(
-                      data.message || "Payment verification failed"
-                    );
+            // Fallback: Try to get from session
+            if (!address) {
+              const savedAddress = sessionStorage.getItem('shippingAddress') || 
+                                   localStorage.getItem('shippingAddress');
+              if (savedAddress) {
+                address = JSON.parse(savedAddress);
+                console.log("📍 Got address from storage:", address);
+              }
+            }
 
-                  alert("✅ Payment successful and verified!");
+            // ✅ Debug logs
+            console.log("🛒 Cart Items:", items);
+            console.log("📍 Shipping Address:", address);
+            console.log("💰 Total Amount:", amount);
 
-                  // ✅ Fetch cart instance properly
-                  const cartStore = await import("./CartSlice");
-                  const { clearCart } = cartStore.default.getState();
-                  if (clearCart) await clearCart();
+            // ✅ Validate data before sending
+            if (!items || items.length === 0) {
+              throw new Error("Cart is empty. Cannot create order. Please pass cartItems to initiateRazorpayPayment()");
+            }
 
-                  // ✅ Resolve promise with success
-                  resolve({
-                    success: true,
-                    paymentId: response.razorpay_payment_id,
-                  });
+            if (!address) {
+              throw new Error("Shipping address is required. Please pass shippingAddress to initiateRazorpayPayment()");
+            }
 
-                  // ✅ Redirect after a short delay
-                  setTimeout(() => {
-                    window.location.href = "/orders";
-                  }, 1500);
-                } catch (verifyErr) {
-                  console.error("❌ Verification Error:", verifyErr);
-                  alert("Payment verification failed: " + verifyErr.message);
-                  reject(verifyErr);
-                }
-              },
-              prefill: {
-                name: get().user?.name || "",
-                email: get().user?.email || "",
-                contact: get().user?.phone || "",
-              },
-              theme: {
-                color: "#000000", // Black theme for Urban Monkey
-              },
-              modal: {
-                ondismiss: function () {
-                  console.log("⚠️ Payment modal closed by user");
-                  reject(new Error("Payment cancelled by user"));
-                },
-              },
-            };
-
-            const rzp = new window.Razorpay(options);
-
-            rzp.on("payment.failed", function (response) {
-              console.error("❌ Payment Failed:", response.error);
-              alert(`Payment failed: ${response.error.description}`);
-              reject(new Error(response.error.description));
+            // ✅ Transform cart items to match Order schema
+            const orderItems = items.map(item => {
+              const product = item.productId || item.product;
+              
+              return {
+                productId: product._id || product.id,
+                name: product.name,
+                price: product.price,
+                quantity: item.quantity,
+                size: item.size || 'N/A',
+                image: product.primaryImage?.url || product.images?.[0]?.url || ''
+              };
             });
 
-            rzp.open();
-          });
-        } catch (err) {
-          console.error("❌ Payment Error:", err);
-          alert("Payment initiation failed: " + err.message);
-          throw err;
-        }
-      },
+            console.log("📦 Transformed Order Items:", orderItems);
+
+            // ✅ SINGLE API CALL - Verify payment and create order
+            const verifyRes = await fetch(
+              `${API_BASE}payment/verify-payment`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${get().token}`,
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  orderDetails: {
+                    items: items,                    // ✅ Use passed items
+                    shippingAddress: address,        // ✅ Use passed address
+                    totalPrice: amount,              // ✅ Explicitly include
+                  },
+                }),
+              }
+            );
+
+            const verifyData = await verifyRes.json();
+            
+            if (!verifyRes.ok) {
+              throw new Error(
+                verifyData.message || "Payment verification failed"
+              );
+            }
+
+            console.log("✅ Order created in database:", verifyData);
+
+            alert("✅ Payment successful and order placed!");
+
+            // Clear cart (if you have a clearCart function)
+            // const clearCart = get().clearCart;
+            // if (clearCart) await clearCart();
+
+            // Resolve and redirect
+            resolve({
+              success: true,
+              paymentId: response.razorpay_payment_id,
+              orderId: verifyData.orderId,
+            });
+
+            setTimeout(() => {
+              window.location.href = "/orders";
+            }, 1500);
+
+          } catch (verifyErr) {
+            console.error("❌ Error:", verifyErr);
+            alert("Failed: " + verifyErr.message);
+            reject(verifyErr);
+          }
+        },
+        prefill: {
+          name: get().user?.name || "",
+          email: get().user?.email || "",
+          contact: get().user?.phone || "",
+        },
+        theme: {
+          color: "#000000",
+        },
+        modal: {
+          ondismiss: function () {
+            console.log("⚠️ Payment modal closed by user");
+            reject(new Error("Payment cancelled by user"));
+          },
+        },
+      };
+
+      console.log("🔍 Razorpay Options:", options);
+
+      const rzp = new window.Razorpay(options);
+
+      rzp.on("payment.failed", function (response) {
+        console.error("❌ Payment Failed:", response.error);
+        alert(`Payment failed: ${response.error.description}`);
+        reject(new Error(response.error.description));
+      });
+
+      rzp.open();
+    });
+  } catch (err) {
+    console.error("❌ Payment Error:", err);
+    alert("Payment initiation failed: " + err.message);
+    throw err;
+  }
+},
 
       fetchUsers: async () => {
         try {

@@ -49,14 +49,14 @@ const addToCart = async (req, res) => {
 
 
 
-// ✅ Get Cart
 const getCart = async (req, res) => {
   try {
     const userId = req.user.id;
 
     const cart = await Cart.findOne({ userId }).populate({
       path: "products.productId",
-      select: "name price image brand sizes category subcategory",
+      // ✅ CHANGED: 'image' → 'images' to match your Product model
+      select: "name price images brand sizes category subcategory status",
     });
 
     if (!cart) {
@@ -75,7 +75,7 @@ const getCart = async (req, res) => {
         totalPrice: cart.totalPrice,
         products: cart.products.map((p) => ({
           _id: p._id,
-          productId: p.productId,
+          productId: p.productId, // ✅ This now includes the 'images' array
           quantity: p.quantity,
           size: p.size, 
         })),

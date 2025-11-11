@@ -22,15 +22,15 @@ router.get("/getProductById/:id", getProductById);
 
 // POST routes
 router.post("/addProduct", authMiddleware("admin"), upload.array("images", 10), createProduct); // Changed to upload.array
-router.post("/:id/images", authMiddleware("admin"), upload.array("images", 5), addImages);
+router.post("/addImages/:id", authMiddleware("admin"), upload.array("images", 5), addImages);
 
 // PUT routes
-router.put("/updateProduct/:id", authMiddleware("admin"), updateProduct);
-router.put("/:id/images/:imageId/primary", authMiddleware("admin"), setPrimaryImage);
-router.put("/:id/images/reorder", authMiddleware("admin"), reorderImages);
+router.put("/updateProduct/:id", authMiddleware("admin"),upload.array("images", 10), updateProduct);
+router.put("/setPrimaryImage/:id/:imageId", authMiddleware("admin"), setPrimaryImage);
+router.put("/reorderImages/:id", authMiddleware("admin"), reorderImages);
 
 // DELETE routes
 router.delete("/deleteProduct/:id", authMiddleware("admin"), deleteProduct);
-router.delete("/:id/images/:imageId", authMiddleware("admin"), deleteImage);
+router.delete("/deleteImage/:id/:imageId", authMiddleware("admin"), deleteImage);
 
 module.exports = router;

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Sidebar } from "../component/Sidebar"
 import { Dashboard } from "../component/dashboard"
-import { ProductManagement } from "../component/productManagement"
+import  ProductManagement  from "../component/productManagement"
 import  OrderManagement  from "../component/ordermanagement"
 import { CustomerManagement } from "../component/customerManagement"
 

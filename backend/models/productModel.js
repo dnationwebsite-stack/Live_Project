@@ -89,8 +89,18 @@ const productSchema = new mongoose.Schema(
   }
 );
 
-// Virtual to get primary image
+// Virtual to get primary image - WITH SAFETY CHECK
 productSchema.virtual('primaryImage').get(function() {
+  // Safety check: ensure images array exists and has items
+  if (!this.images || !Array.isArray(this.images) || this.images.length === 0) {
+    return {
+      url: "https://via.placeholder.com/400x400?text=No+Image",
+      alt: "Default Product Image",
+      isPrimary: true,
+      order: 0
+    };
+  }
+  
   const primary = this.images.find(img => img.isPrimary);
   return primary || this.images[0];
 });

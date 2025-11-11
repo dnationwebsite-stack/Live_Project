@@ -70,11 +70,58 @@ export default function UrbanMonkeyHeader() {
 
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  const updateQuantity = (productId, newQuantity) => {
+  // ✅ Helper function to get cart item image
+  const getCartItemImage = (item) => {
+    const product = item?.productId || item?.product;
+
+    if (!product) {
+      return "https://via.placeholder.com/60x60?text=No+Image";
+    }
+
+    // Try primaryImage virtual
+    if (product.primaryImage?.url) {
+      return product.primaryImage.url;
+    }
+
+    // Try images array
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      const primary = product.images.find(img => img.isPrimary);
+      if (primary?.url) return primary.url;
+      if (product.images[0]?.url) return product.images[0].url;
+    }
+
+    return "https://via.placeholder.com/60x60?text=No+Image";
+  };
+
+  // ✅ Validate cart stock before checkout
+  const validateCartStock = () => {
+    for (const item of cartItems) {
+      const product = item.productId || item.product;
+      const sizeObj = product?.sizes?.find(s => s.size === item.size);
+
+      if (!sizeObj) {
+        return {
+          valid: false,
+          message: `Size ${item.size} not found for ${product?.name}`
+        };
+      }
+
+      if (sizeObj.stock < item.quantity) {
+        return {
+          valid: false,
+          message: `Insufficient stock for "${product?.name}" - Size ${item.size}.\nAvailable: ${sizeObj.stock}, In cart: ${item.quantity}`
+        };
+      }
+    }
+
+    return { valid: true };
+  };
+
+  const updateQuantity = (productId, size, newQuantity) => {
     if (newQuantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(productId, size);
     } else {
-      updateCart(productId, newQuantity);
+      updateCart(productId, newQuantity, size);
     }
   };
 
@@ -100,18 +147,14 @@ export default function UrbanMonkeyHeader() {
 
     try {
       setLoading(true);
-      // add id for local store (if your saveAddress expects id)
       const addrId = Date.now().toString();
       const addrToSave = { ...newAddress, id: addrId };
 
-      // 1) save locally in Zustand
       if (typeof saveAddress === "function") {
         await saveAddress(addrToSave);
       }
 
-      // 2) send address to backend to attach to pending order
       if (typeof saveShippingAddress === "function") {
-        // Some implementations expect just the address object
         await saveShippingAddress({
           fullName: addrToSave.fullName,
           phoneNumber: addrToSave.phoneNumber,
@@ -123,7 +166,6 @@ export default function UrbanMonkeyHeader() {
         });
       }
 
-      // 3) select it locally
       if (typeof selectShippingAddress === "function") {
         selectShippingAddress(addrId);
       }
@@ -140,7 +182,6 @@ export default function UrbanMonkeyHeader() {
       });
       setErrors({});
       setCartStep("review");
-      // refresh cart just in case
       fetchCart();
     } catch (err) {
       console.error("Save address failed:", err);
@@ -152,25 +193,13 @@ export default function UrbanMonkeyHeader() {
 
   const handleSelectAddress = async (addr) => {
     try {
-      console.log("🟩 Selected Address Object:", addr);
       setSelectedAddress(addr);
       setLoading(true);
       if (typeof selectShippingAddress === "function") {
-        console.log("📦 Saving selected address ID:", addr.id);
         selectShippingAddress(addr.id);
       }
 
       if (typeof saveShippingAddress === "function") {
-        console.log("🌐 Sending address data to backend:", {
-          fullName: addr.fullName,
-          phoneNumber: addr.phoneNumber,
-          line1: addr.line1,
-          line2: addr.line2,
-          city: addr.city,
-          state: addr.state,
-          postalCode: addr.postalCode,
-        });
-
         await saveShippingAddress({
           fullName: addr.fullName,
           phoneNumber: addr.phoneNumber,
@@ -191,95 +220,17 @@ export default function UrbanMonkeyHeader() {
     }
   };
 
-  // Final order placement (calls Zustand backend function)
-  const handlePlaceOrder = async () => {
-    // ensure address selected
-    if (!selectedShippingAddressId) {
-      alert("Please select a shipping address");
-      return;
-    }
-
-    // ensure cart not empty
-    if (!cartItems || cartItems.length === 0) {
-      alert("Your cart is empty");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      // call zustand's placeCODOrder, which should call backend and create new order based on server-side cart
-      if (typeof placeCODOrder !== "function") {
-        throw new Error("placeCODOrder not implemented in store");
-      }
-
-      const resp = await placeCODOrder(); // store handles auth token and backend call
-
-      // success
-      console.log("Order placed response:", resp);
-      alert("Order placed successfully!");
-
-      // clear frontend cart state if clearCart available, otherwise fetchCart to refresh
-      if (typeof clearCart === "function") {
-        await clearCart();
-      } else {
-        // fallback: refetch cart
-        await fetchCart();
-      }
-
-      // reset drawer and step
-      setIsCartOpen(false);
-      setCartStep("cart");
-    } catch (err) {
-      console.error("Place order error:", err);
-      alert(err?.message || "Failed to place order");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ✅ Order logic
   const handleNext = async () => {
     if (cartStep === "cart") {
+      // ✅ Validate stock before proceeding
+      const stockCheck = validateCartStock();
+      if (!stockCheck.valid) {
+        alert(`⚠️ ${stockCheck.message}\n\nPlease update your cart quantities.`);
+        return;
+      }
       setCartStep("review");
     } else if (cartStep === "review") {
       setCartStep("payment");
-    } else if (cartStep === "payment") {
-      try {
-        if (!newAddress.paymentMethod) {
-          alert("Please select a payment method");
-          return;
-        }
-
-        const totalAmount = cartItems.reduce(
-          (sum, item) => sum + item.productId.price * item.quantity,
-          0
-        );
-
-        let finalAmount = totalAmount;
-        if (isAuthenticated && !user.hasOrdered) {
-          finalAmount = Math.round(totalAmount * 0.95);
-        }
-
-        if (newAddress.paymentMethod === "cod") {
-          alert(
-            `🎉 Congratulations! Your COD order has been placed successfully!\nTotal: ₹${finalAmount}`
-          );
-        } else if (newAddress.paymentMethod === "online") {
-          alert(
-            `Redirecting to online payment gateway...\nTotal: ₹${finalAmount}`
-          );
-        }
-
-        if (isAuthenticated && !user.hasOrdered) {
-          user.hasOrdered = true;
-        }
-
-        setIsCartOpen(false);
-        setCartStep("cart");
-      } catch (err) {
-        alert("Failed to place order: " + err.message);
-      }
     }
   };
 
@@ -291,14 +242,13 @@ export default function UrbanMonkeyHeader() {
 
   // ✅ WhatsApp Join Group Handler
   const handleJoinWhatsApp = () => {
-    const groupLink = "https://chat.whatsapp.com/YourGroupInviteLinkHere"; // 🟢 Replace this with your group link
+    const groupLink = "https://chat.whatsapp.com/YourGroupInviteLinkHere";
 
     const userConfirmed = window.confirm(
       "📱 Do you want to open WhatsApp and join our community group?\n\nYou'll need to grant permission to open WhatsApp."
     );
 
     if (userConfirmed) {
-      // Animate alert before opening
       const popup = document.createElement("div");
       popup.innerText = "Opening WhatsApp...";
       popup.style.position = "fixed";
@@ -337,7 +287,7 @@ export default function UrbanMonkeyHeader() {
                 noWrap
                 sx={{ fontWeight: "bold", color: "black" }}
               >
-                URBAN MONKEY®
+                DRIP NATION®
               </Typography>
             </Link>
             <SearchBar />
@@ -438,7 +388,6 @@ export default function UrbanMonkeyHeader() {
               </>
             )}
 
-            {/* ✅ WhatsApp Icon Button */}
             <IconButton color="success" onClick={handleJoinWhatsApp}>
               <FaWhatsapp className="text-black text-3xl" />
             </IconButton>
@@ -471,54 +420,92 @@ export default function UrbanMonkeyHeader() {
                 <Typography align="center" mt={4}>Your cart is empty</Typography>
               ) : (
                 <List>
-                  {cartItems.map((item, index) => (
-                    <React.Fragment key={`${item.productId?._id || item.productId}-${item.size || index}`}>
-                      <ListItem>
-                        <img
-                          src={item.productId?.image || ""}
-                          alt={item.productId?.name || ""}
-                          style={{ width: 60, height: 60, marginRight: 12, borderRadius: 8 }}
-                        />
-                        <ListItemText
-                          primary={item.productId?.name || ""}
-                          secondary={
-                            <>
-                              <Typography component="span" variant="body2" color="text.primary">
-                                ₹{item.productId?.price || ""}
-                              </Typography>
-                              <br />
-                              <Typography
-                                component="span"
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ fontSize: 13 }}
-                              >
-                                Size: <strong>{item.size || "N/A"}</strong>
-                              </Typography>
-                            </>
-                          }
-                        />
-                        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                          <IconButton
-                            onClick={() =>
-                              updateQuantity(item.productId?._id, item.quantity - 1)
+                  {cartItems.map((item, index) => {
+                    const product = item.productId || item.product;
+                    const imageUrl = getCartItemImage(item);
+                    const sizeObj = product?.sizes?.find(s => s.size === item.size);
+                    const hasStockIssue = sizeObj && sizeObj.stock < item.quantity;
+
+                    return (
+                      <React.Fragment key={`${product?._id || index}-${item.size || 'nosize'}-${index}`}>
+                        <ListItem sx={{
+                          backgroundColor: hasStockIssue ? '#fff3e0' : 'transparent',
+                          borderLeft: hasStockIssue ? '3px solid #ff9800' : 'none',
+                          mb: 1,
+                          borderRadius: 1
+                        }}>
+                          <img
+                            src={imageUrl}
+                            alt={product?.name || "Product"}
+                            style={{
+                              width: 60,
+                              height: 60,
+                              marginRight: 12,
+                              borderRadius: 8,
+                              objectFit: "contain",
+                              backgroundColor: "#f9f9f9",
+                              border: "1px solid #eee"
+                            }}
+                            onError={(e) => {
+                              e.target.src = "https://via.placeholder.com/60x60?text=Error";
+                            }}
+                          />
+                          <ListItemText
+                            primary={
+                              <div>
+                                {product?.name || "Unknown Product"}
+                                {hasStockIssue && (
+                                  <Typography variant="caption" color="error" display="block" sx={{ mt: 0.5, fontWeight: 'bold' }}>
+                                    ⚠️ Only {sizeObj.stock} available
+                                  </Typography>
+                                )}
+                              </div>
                             }
-                          >
-                            <RemoveIcon />
-                          </IconButton>
-                          <Typography>{item.quantity}</Typography>
-                          <IconButton
-                            onClick={() =>
-                              updateQuantity(item.productId._id, item.quantity + 1)
+                            secondary={
+                              <>
+                                <Typography component="span" variant="body2" color="text.primary">
+                                  ₹{product?.price || "0"}
+                                </Typography>
+                                <br />
+                                <Typography
+                                  component="span"
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{ fontSize: 13 }}
+                                >
+                                  Size: <strong>{item.size || "N/A"}</strong>
+                                </Typography>
+                              </>
                             }
-                          >
-                            <AddIcon />
-                          </IconButton>
-                        </Box>
-                      </ListItem>
-                      <Divider />
-                    </React.Fragment>
-                  ))}
+                          />
+                          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                            <IconButton
+                              size="small"
+                              onClick={() => updateQuantity(product?._id, item.size, item.quantity - 1)}
+                            >
+                              <RemoveIcon fontSize="small" />
+                            </IconButton>
+                            <Typography sx={{
+                              minWidth: 20,
+                              textAlign: "center",
+                              color: hasStockIssue ? '#ff9800' : 'inherit',
+                              fontWeight: hasStockIssue ? 'bold' : 'normal'
+                            }}>
+                              {item.quantity}
+                            </Typography>
+                            <IconButton
+                              size="small"
+                              onClick={() => updateQuantity(product?._id, item.size, item.quantity + 1)}
+                              disabled={sizeObj && item.quantity >= sizeObj.stock}
+                            >
+                              <AddIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        </ListItem>
+                        <Divider />
+                      </React.Fragment>
+                    );
+                  })}
                 </List>
               )
             )}
@@ -606,7 +593,6 @@ export default function UrbanMonkeyHeader() {
 
             {/* Payment Step */}
             {cartStep === "payment" && (() => {
-              // Calculate amounts at the component level so they're available everywhere
               const totalAmount = cartItems.reduce(
                 (sum, item) => sum + item.productId.price * item.quantity,
                 0
@@ -652,7 +638,6 @@ export default function UrbanMonkeyHeader() {
                       bgcolor: "white",
                     }}
                   >
-                    {/* Price Breakdown */}
                     <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
                       <Typography sx={{ color: "#555" }}>Subtotal</Typography>
                       <Typography sx={{ fontWeight: 500 }}>₹{totalAmount}</Typography>
@@ -675,10 +660,8 @@ export default function UrbanMonkeyHeader() {
                       <Typography sx={{ fontWeight: 500 }}>+₹{deliveryCharge}</Typography>
                     </Box>
 
-                    {/* Divider */}
                     <Box sx={{ borderTop: "1px solid #ddd", my: 2 }}></Box>
 
-                    {/* Total Payable */}
                     <Box
                       sx={{
                         display: "flex",
@@ -717,7 +700,6 @@ export default function UrbanMonkeyHeader() {
                       </Typography>
                     </Box>
 
-                    {/* ✅ You Saved section */}
                     {discount > 0 && (
                       <Typography
                         sx={{
@@ -733,7 +715,6 @@ export default function UrbanMonkeyHeader() {
                     )}
                   </Box>
 
-                  {/* Payment Buttons */}
                   <Box
                     sx={{
                       display: "flex",
@@ -748,31 +729,6 @@ export default function UrbanMonkeyHeader() {
                       fullWidth
                       color="success"
                       sx={{ py: 1.5, fontWeight: 600 }}
-                      // onClick={async () => {
-                      //   try {
-                      //     const { cartItems } = useCartStore.getState();
-                      //     const { placeCODOrder, selectedShippingAddressId, shippingAddresses } = useUserStore.getState();
-
-                      //     // find the selected address object
-                      //     const selectedAddr = shippingAddresses.find(a => a.id === selectedShippingAddressId);
-                      //     if (!selectedAddr) {
-                      //       alert("Please select a shipping address");
-                      //       return;
-                      //     }
-
-                      //     if (newAddress.paymentMethod === "cod") {
-                      //       await placeCODOrder({ items: cartItems, address: selectedAddr });
-                      //       alert("✅ COD Order placed successfully!");
-                      //       setIsCartOpen(false);
-                      //     } else if (newAddress.paymentMethod === "online") {
-                      //       console.log("💳 Redirecting to online payment...");
-                      //     } else {
-                      //       alert("Please select a payment method first!");
-                      //     }
-                      //   } catch (err) {
-                      //     console.error("❌ Order failed:", err);
-                      //   }
-                      // }}
                       onClick={() =>
                         setNewAddress({ ...newAddress, paymentMethod: "cod" })
                       }
@@ -784,10 +740,6 @@ export default function UrbanMonkeyHeader() {
                       variant={newAddress.paymentMethod === "online" ? "contained" : "outlined"}
                       fullWidth
                       color="success"
-                      // onClick={() => {
-                      //   setNewAddress({ ...newAddress, paymentMethod: "online" });
-                      //   initiateRazorpayPayment(finalAmount);
-                      // }}
                       onClick={() =>
                         setNewAddress({ ...newAddress, paymentMethod: "online" })
                       }
@@ -817,8 +769,16 @@ export default function UrbanMonkeyHeader() {
               <Button
                 fullWidth variant="contained"
                 sx={{ bgcolor: "black", "&:hover": { bgcolor: "#333" }, py: 1.5, fontWeight: "bold" }}
+                // Replace the onClick handler in your "Place Order" button with this:
                 onClick={async () => {
                   try {
+                    // ✅ Validate stock again before final submission
+                    const stockCheck = validateCartStock();
+                    if (!stockCheck.valid) {
+                      alert(`⚠️ ${stockCheck.message}\n\nPlease go back and update your cart.`);
+                      return;
+                    }
+
                     const { cartItems } = useCartStore.getState();
                     const {
                       placeCODOrder,
@@ -827,7 +787,7 @@ export default function UrbanMonkeyHeader() {
                     } = useUserStore.getState();
 
                     const selectedAddr = shippingAddresses.find(
-                      (a) => a.id === selectedShippingAddressId
+                      (a) => a.id === selectedShippingAddressId || a._id === selectedShippingAddressId
                     );
 
                     if (!selectedAddr) {
@@ -835,23 +795,51 @@ export default function UrbanMonkeyHeader() {
                       return;
                     }
 
-                    // ✅ Handle payment type
+                    if (!newAddress.paymentMethod) {
+                      alert("Please select a payment method!");
+                      return;
+                    }
+
+                    setLoading(true);
+
                     if (newAddress.paymentMethod === "cod") {
                       await placeCODOrder({ items: cartItems, address: selectedAddr });
                       alert("✅ COD Order placed successfully!");
+                      await fetchCart();
                       setIsCartOpen(false);
+                      setCartStep("cart");
+                      navigate("/orders");
                     } else if (newAddress.paymentMethod === "online") {
-                      initiateRazorpayPayment(finalAmount);
-                    } else {
-                      alert("Please select a payment method first!");
+                      const totalAmount = cartItems.reduce(
+                        (sum, item) => sum + item.productId.price * item.quantity,
+                        0
+                      );
+                      const shippingCharge = 15;
+                      const deliveryCharge = 50;
+                      const discount = isAuthenticated && !user?.hasOrdered
+                        ? Math.round(totalAmount * 0.05)
+                        : 0;
+                      const finalAmount = Math.round(
+                        totalAmount + shippingCharge + deliveryCharge - discount
+                      );
+
+                      await initiateRazorpayPayment(finalAmount, cartItems, selectedAddr);
+
+                      // After successful payment, clear cart and navigate
+                      await fetchCart();
+                      setIsCartOpen(false);
+                      setCartStep("cart");
                     }
                   } catch (err) {
                     console.error("❌ Order failed:", err);
+                    alert(`❌ Order failed: ${err.message || "Something went wrong"}`);
+                  } finally {
+                    setLoading(false);
                   }
                 }}
+                disabled={loading}
               >
-
-                Place Order
+                {loading ? "Processing..." : "Place Order"}
               </Button>}
           </Box>
         </Box>

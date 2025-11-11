@@ -13,7 +13,6 @@ const orderItemSchema = new mongoose.Schema({
   image: { type: String },
 });
 
-// This will store a *copy* of the selected address at the time of order
 const shippingAddressSchema = new mongoose.Schema({
   fullName: { type: String, required: true },
   phoneNumber: { type: String, required: true },
@@ -39,21 +38,26 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["COD", "Card", "UPI"],
+      enum: ["COD", "Card", "UPI", "Razorpay"], 
       default: "COD",
     },
     paymentStatus: {
       type: String,
-      enum: ["pending", "paid"],
+      enum: ["pending", "paid", "failed"], 
       default: "pending",
     },
+    // ✅ Add Razorpay payment tracking fields
+    razorpayOrderId: { type: String },
+    razorpayPaymentId: { type: String },
+    razorpaySignature: { type: String },
+    paidAt: { type: Date },
   },
   { timestamps: true }
 );
 
 orderSchema.pre("save", async function (next) {
   if (!this.customOrderId) {
-    const random = Math.floor(1000 + Math.random() * 9000); // e.g., 4-digit random
+    const random = Math.floor(1000 + Math.random() * 9000);
     this.customOrderId = `ORD-${Date.now().toString().slice(-6)}-${random}`;
   }
   next();

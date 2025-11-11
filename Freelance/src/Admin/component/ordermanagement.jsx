@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Download, Search, ChevronDown } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { useUserStore } from "../../store/UserSlice";
 import OrderDetailsModal from "./orderDetailsModal";
 
@@ -10,7 +8,7 @@ export default function OrderManagement() {
     orders,
     fetchAllOrders,
     loading,
-    handleStatusChange, // ✅ Zustand function
+    handleStatusChange,
   } = useUserStore();
 
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -36,45 +34,93 @@ export default function OrderManagement() {
     cancelled: "bg-red-100 text-red-700 border border-red-300",
   };
 
-  const generateInvoicePDF = (order) => {
-    const doc = new jsPDF();
-
-    doc.setFontSize(20);
-    doc.text("Order Invoice", 14, 20);
-
-    doc.setFontSize(12);
-    doc.text(`Order ID: ${order.customOrderId || order._id}`, 14, 35);
-    doc.text(`Customer: ${order.shippingAddress.fullName}`, 14, 42);
-    doc.text(`Address: ${order.shippingAddress.line1 || "N/A"}`, 14, 49);
-    doc.text(`Status: ${order.status}`, 14, 56);
-    doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString()}`, 14, 63);
-
-    const tableColumn = ["Product", "Qty", "Price", "Total"];
-    const tableRows = [];
-
+  const generateInvoiceTXT = (order) => {
+    // Create text invoice content
+    let invoiceText = "";
+    
+    // Header
+    invoiceText += "=".repeat(80) + "\n";
+    invoiceText += " ".repeat(32) + "INVOICE\n";
+    invoiceText += "=".repeat(80) + "\n\n";
+    
+    // Invoice Details (Right aligned)
+    invoiceText += `Order ID: ${order.customOrderId || order._id}\n`;
+    invoiceText += `Date: ${new Date(order.createdAt).toLocaleDateString('en-IN', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    })}\n`;
+    invoiceText += `Status: ${order.status?.toUpperCase() || "N/A"}\n`;
+    invoiceText += `Payment Method: ${order.paymentMethod || "COD"}\n\n`;
+    
+    invoiceText += "-".repeat(80) + "\n\n";
+    
+    // Bill To Section
+    invoiceText += "BILL TO:\n";
+    invoiceText += `${order.shippingAddress?.fullName || "N/A"}\n`;
+    invoiceText += `${order.shippingAddress?.line1 || "N/A"}\n`;
+    if (order.shippingAddress?.line2) {
+      invoiceText += `${order.shippingAddress.line2}\n`;
+    }
+    invoiceText += `${order.shippingAddress?.city || ""}, ${order.shippingAddress?.state || ""} ${order.shippingAddress?.zipCode || ""}\n`;
+    if (order.shippingAddress?.phone) {
+      invoiceText += `Phone: ${order.shippingAddress.phone}\n`;
+    }
+    
+    invoiceText += "\n" + "-".repeat(80) + "\n\n";
+    
+    // Items Table Header
+    invoiceText += "ITEMS:\n\n";
+    invoiceText += String("Item").padEnd(40) + 
+                   String("Qty").padStart(8) + 
+                   String("Price").padStart(15) + 
+                   String("Total").padStart(17) + "\n";
+    invoiceText += "-".repeat(80) + "\n";
+    
+    // Items
     order.items?.forEach((item) => {
-      tableRows.push([
-        item.name,
-        item.quantity,
-        `₹${item.price}`,
-        `₹${item.price * item.quantity}`,
-      ]);
+      const itemName = (item.name || "N/A").substring(0, 38);
+      const qty = (item.quantity || 0).toString();
+      const price = `Rs. ${(item.price || 0).toFixed(2)}`;
+      const total = `Rs. ${((item.price || 0) * (item.quantity || 0)).toFixed(2)}`;
+      
+      invoiceText += itemName.padEnd(40) + 
+                     qty.padStart(8) + 
+                     price.padStart(15) + 
+                     total.padStart(17) + "\n";
     });
-
-    autoTable(doc, {
-      startY: 70,
-      head: [tableColumn],
-      body: tableRows,
-      styles: { fontSize: 11 },
-      headStyles: { fillColor: [240, 240, 240] },
-    });
-
-    const finalY = doc.lastAutoTable?.finalY || 100;
-    doc.setFontSize(13);
-    doc.text(`Total: ₹${order.totalPrice}`, 14, finalY + 10);
-    doc.text("Thank you for your purchase!", 14, finalY + 20);
-
-    doc.save(`Invoice-${order.customOrderId || order._id}.pdf`);
+    
+    invoiceText += "-".repeat(80) + "\n\n";
+    
+    // Totals Section
+    const subtotal = order.totalPrice || 0;
+    const delivery = 15;
+    const shipping = 50;
+    const grandTotal = subtotal + delivery + shipping;
+    
+    invoiceText += " ".repeat(47) + "Subtotal:".padEnd(18) + `Rs. ${subtotal.toFixed(2)}`.padStart(15) + "\n";
+    invoiceText += " ".repeat(47) + "delivery:".padEnd(18) + `Rs. ${delivery.toFixed(2)}`.padStart(15) + "\n";
+    invoiceText += " ".repeat(47) + "Shipping:".padEnd(18) + `Rs. ${shipping.toFixed(2)}`.padStart(15) + "\n";
+    invoiceText += " ".repeat(47) + "-".repeat(33) + "\n";
+    invoiceText += " ".repeat(47) + "GRAND TOTAL:".padEnd(18) + `Rs. ${grandTotal.toFixed(2)}`.padStart(15) + "\n\n";
+    
+    invoiceText += "=".repeat(80) + "\n\n";
+    
+    // Footer
+    invoiceText += " ".repeat(22) + "Thank you for your purchase!\n";
+    invoiceText += " ".repeat(10) + "This is a computer-generated invoice and does not require a signature.\n";
+    invoiceText += "\n" + "=".repeat(80) + "\n";
+    
+    // Create and download the text file
+    const blob = new Blob([invoiceText], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Invoice-${order.customOrderId || order._id}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   };
 
   return (
@@ -116,7 +162,7 @@ export default function OrderManagement() {
                 <div>
                   <p className="text-xs uppercase text-gray-500">Customer</p>
                   <p className="text-gray-800">
-                    {order.shippingAddress.fullName}
+                    {order.shippingAddress?.fullName}
                   </p>
                 </div>
 
@@ -169,7 +215,7 @@ export default function OrderManagement() {
                           <button
                             key={status}
                             onClick={() => {
-                              handleStatusChange(order._id, status); // ✅ Zustand call
+                              handleStatusChange(order._id, status);
                               setOpenDropdown(null);
                             }}
                             className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
@@ -192,7 +238,7 @@ export default function OrderManagement() {
                   </button>
 
                   <button
-                    onClick={() => generateInvoicePDF(order)}
+                    onClick={() => generateInvoiceTXT(order)}
                     className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center gap-2"
                   >
                     <Download size={18} /> Invoice
