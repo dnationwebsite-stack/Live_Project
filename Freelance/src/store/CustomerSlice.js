@@ -8,17 +8,13 @@ export const useCustomerStore = create((set, get) => ({
   loading: false,
   error: null,
 
-  // ✅ Fetch all customers
   fetchCustomers: async () => {
     try {
       set({ loading: true, error: null });
       const res = await fetch(`${API_BASE}/allCustomer`, {
-        credentials: "include", // ✅ Include cookies in request
+        credentials: "include", 
       });
       const data = await res.json();
-
-      console.log("Fetched customers response:", data);
-
       const customersArray = Array.isArray(data)
         ? data
         : data.customers || [];
@@ -29,12 +25,11 @@ export const useCustomerStore = create((set, get) => ({
     }
   },
 
-  // ✅ Fetch single customer by ID
   fetchCustomerById: async (id) => {
     try {
       set({ loading: true, error: null });
       const res = await fetch(`${API_BASE}/getCustomer/${id}`, {
-        credentials: "include", // ✅ Include cookies
+        credentials: "include",
       });
       const data = await res.json();
       set({ selectedCustomer: data, loading: false });
@@ -43,12 +38,11 @@ export const useCustomerStore = create((set, get) => ({
     }
   },
 
-  // ✅ Delete customer
   deleteCustomer: async (id) => {
     try {
       const res = await fetch(`${API_BASE}/deleteCustomer/${id}`, {
         method: "DELETE",
-        credentials: "include", // ✅ Include cookies
+        credentials: "include", 
       });
 
       if (!res.ok) throw new Error("Failed to delete customer");
@@ -61,6 +55,5 @@ export const useCustomerStore = create((set, get) => ({
     }
   },
 
-  // ✅ Clear selected customer
   clearSelected: () => set({ selectedCustomer: null }),
 }));

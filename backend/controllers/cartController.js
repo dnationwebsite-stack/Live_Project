@@ -9,28 +9,22 @@ const addToCart = async (req, res) => {
 
     const product = await Product.findById(productId);
     if (!product) {
-      console.log("❌ Product not found");
       return res.status(404).json({ success: false, message: "Product not found" });
     }
 
     let cart = await Cart.findOne({ userId });
-    if (!cart) {
-      cart = new Cart({ userId, products: [] });
-    }
+    if (!cart) cart = new Cart({ userId, products: [] });
 
     const existingProduct = cart.products.find(
       (p) => p.productId.toString() === productId && p.size === size
     );
 
     if (existingProduct) {
-      console.log("🟡 Product already in cart with same size. Increasing quantity.");
       existingProduct.quantity += quantity;
     } else {
-      console.log("🆕 New product or size variant added to cart.");
       cart.products.push({ productId, quantity, size });
     }
 
-    // ✅ Recalculate total
     const populatedCart = await cart.populate("products.productId");
     cart.totalPrice = populatedCart.products.reduce((sum, item) => {
       const price = item.productId?.price || 0;
@@ -39,33 +33,25 @@ const addToCart = async (req, res) => {
 
     await cart.save();
 
-    return res.status(200).json({ success: true, cart });
-  } catch (error) {
-    console.error("❌ Add to Cart Error:", error.message);
-    return res.status(500).json({ success: false, message: "Server error" });
+    res.status(200).json({ success: true, cart });
+  } catch {
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-
-
-
+// ✅ Get Cart
 const getCart = async (req, res) => {
   try {
     const userId = req.user.id;
 
     const cart = await Cart.findOne({ userId }).populate({
       path: "products.productId",
-      // ✅ CHANGED: 'image' → 'images' to match your Product model
       select: "name price images brand sizes category subcategory status",
     });
 
     if (!cart) {
       return res.status(200).json({ success: true, cart: { products: [] } });
     }
-
-    cart.products.forEach((p) => {
-      console.log(`➡️ ${p.productId?.name} | Size: ${p.size} | Qty: ${p.quantity}`);
-    });
 
     res.status(200).json({
       success: true,
@@ -75,18 +61,16 @@ const getCart = async (req, res) => {
         totalPrice: cart.totalPrice,
         products: cart.products.map((p) => ({
           _id: p._id,
-          productId: p.productId, // ✅ This now includes the 'images' array
+          productId: p.productId,
           quantity: p.quantity,
-          size: p.size, 
+          size: p.size,
         })),
       },
     });
-  } catch (error) {
-    console.error("❌ Get Cart Error:", error);
+  } catch {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 
 // ✅ Remove Product from Cart
 const removeFromCart = async (req, res) => {
@@ -94,19 +78,21 @@ const removeFromCart = async (req, res) => {
     const { productId } = req.body;
     const userId = req.user.id;
 
-    let cart = await Cart.findOne({ userId });
+    const cart = await Cart.findOne({ userId });
     if (!cart) return res.status(404).json({ success: false, message: "Cart not found" });
 
-    cart.products = cart.products.filter((p) => p.productId.toString() !== productId);
+    cart.products = cart.products.filter(
+      (p) => p.productId.toString() !== productId
+    );
 
     await cart.save();
     res.status(200).json({ success: true, cart });
-  } catch (error) {
-    console.error("Remove Cart error:", error.message);
+  } catch {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
+// ✅ Update Cart Quantity
 const updateCartQuantity = async (req, res) => {
   try {
     const { productId, quantity } = req.body;
@@ -116,25 +102,24 @@ const updateCartQuantity = async (req, res) => {
       return res.status(400).json({ success: false, message: "Quantity must be at least 1" });
     }
 
-    let cart = await Cart.findOne({ userId });
+    const cart = await Cart.findOne({ userId });
     if (!cart) return res.status(404).json({ success: false, message: "Cart not found" });
 
-    const productInCart = cart.products.find((p) => p.productId.toString() === productId);
-
+    const productInCart = cart.products.find(
+      (p) => p.productId.toString() === productId
+    );
     if (!productInCart) {
       return res.status(404).json({ success: false, message: "Product not in cart" });
     }
 
-    productInCart.quantity = quantity; // update karega
-
+    productInCart.quantity = quantity;
     await cart.save();
+
     res.status(200).json({ success: true, cart });
-  } catch (error) {
-    console.error("Update Cart Quantity error:", error.message);
+  } catch {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 
 module.exports = {
   addToCart,

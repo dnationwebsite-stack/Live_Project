@@ -10,7 +10,6 @@ const useCartStore = create(
       loading: false,
       error: null,
 
-      // ✅ Fetch cart
       fetchCart: async () => {
         set({ loading: true, error: null })
         try {
@@ -27,7 +26,6 @@ const useCartStore = create(
         }
       },
 
-      // ✅ Add to cart
       addToCart: async (productId, quantity = 1, size) => {
         set({ loading: true, error: null })
         try {
@@ -40,14 +38,13 @@ const useCartStore = create(
           const data = await res.json()
           if (!res.ok) throw new Error(data.message || "Failed to add to cart")
 
-          // Refresh cart
+        
           await get().fetchCart()
         } catch (err) {
           set({ error: err.message, loading: false })
         }
       },
 
-      // ✅ Update quantity
       updateCart: async (productId, quantity) => {
         set({ loading: true, error: null })
         try {
@@ -66,7 +63,6 @@ const useCartStore = create(
         }
       },
 
-      // ✅ Remove product
       removeFromCart: async (productId) => {
         set({ loading: true, error: null })
         try {
@@ -87,7 +83,7 @@ const useCartStore = create(
       clearCart: () => set({ cartItems: [] }),
     }),
     {
-      name: "cart-store", // localStorage key
+      name: "cart-store", 
     }
   )
 )

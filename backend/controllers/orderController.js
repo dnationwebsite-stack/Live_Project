@@ -1,25 +1,17 @@
 const Cart = require("../models/cartModel");
 const Order = require("../models/orderModel");
 const Product = require("../models/productModel");
-const User = require("../models/userModel");
-const mongoose = require("mongoose");
 
-// ✅ Save/Update Shipping Address
+// ✅ Save or Update Shipping Address
 const saveShippingAddress = async (req, res) => {
   try {
     const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ message: "User not authenticated" });
-    }
+    if (!userId) return res.status(401).json({ message: "User not authenticated" });
 
-    const { fullName, phoneNumber, line1, line2, city, state, postalCode } =
-      req.body;
+    const { fullName, phoneNumber, line1, line2, city, state, postalCode } = req.body;
 
-    // ✅ Validate address
     if (!fullName || !phoneNumber || !line1 || !city || !state || !postalCode) {
-      return res
-        .status(400)
-        .json({ message: "All required address fields must be provided" });
+      return res.status(400).json({ message: "All required address fields must be provided" });
     }
 
     let order = await Order.findOne({ user: userId, status: "pending" });
@@ -35,27 +27,16 @@ const saveShippingAddress = async (req, res) => {
       });
     }
 
-    order.shippingAddress = {
-      fullName,
-      phoneNumber,
-      line1,
-      line2,
-      city,
-      state,
-      postalCode,
-    };
-
+    order.shippingAddress = { fullName, phoneNumber, line1, line2, city, state, postalCode };
     await order.save();
 
-    return res.status(200).json({
+    res.status(200).json({
+      success: true,
       message: "Shipping address saved successfully",
       shippingAddress: order.shippingAddress,
     });
-  } catch (error) {
-    console.error("❌ Save Shipping Address Error:", error);
-    return res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: "Server error while saving shipping address" });
   }
 };
 
@@ -63,95 +44,60 @@ const saveShippingAddress = async (req, res) => {
 const placeCODOrder = async (req, res) => {
   try {
     const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     const { totalPrice: clientTotal } = req.body;
-
-    // Fetch cart with products
     const cart = await Cart.findOne({ userId }).populate("products.productId");
 
     if (!cart || cart.products.length === 0) {
       return res.status(400).json({ message: "Cart is empty. Cannot place order." });
     }
 
-    console.log("🔍 Starting order placement...");
-    console.log("🔍 Cart items:", cart.products.length);
-
-    // ✅ Step 1: Validate and deduct size-specific stock for all products
-    const stockUpdates = [];
-    
+    // Step 1: Validate and update stock
     for (const item of cart.products) {
       const product = await Product.findById(item.productId._id);
-      
       if (!product) {
-        return res.status(404).json({
-          message: `Product not found: ${item.productId?.name || "Unknown"}`
-        });
+        return res.status(404).json({ message: `Product not found: ${item.productId?.name || "Unknown"}` });
       }
 
-      console.log(`🔍 Processing: ${product.name} | Size: ${item.size} | Qty: ${item.quantity}`);
-
-      // Find the specific size in the product's sizes array
-      const sizeObj = product.sizes.find(s => s.size === item.size);
-      
+      const sizeObj = product.sizes.find((s) => s.size === item.size);
       if (!sizeObj) {
         return res.status(400).json({
-          message: `Size "${item.size}" not available for product "${product.name}"`
+          message: `Size "${item.size}" not available for product "${product.name}"`,
         });
       }
 
-      console.log(`🔍 Current stock for ${product.name} (Size ${item.size}): ${sizeObj.stock}`);
-
-      // Check if sufficient stock exists for this size
       if (sizeObj.stock < item.quantity) {
         return res.status(400).json({
-          message: `Insufficient stock for "${product.name}" - Size ${item.size}. Available: ${sizeObj.stock}, Requested: ${item.quantity}`
+          message: `Insufficient stock for "${product.name}" - Size ${item.size}. Available: ${sizeObj.stock}`,
         });
       }
 
-      // ✅ Deduct stock for this specific size
-      const oldStock = sizeObj.stock;
       sizeObj.stock -= item.quantity;
-      
       await product.save();
-      
-      console.log(`✅ Stock deducted: ${product.name} (Size ${item.size}) - ${oldStock} → ${sizeObj.stock}`);
-      
-      stockUpdates.push({
-        productName: product.name,
-        size: item.size,
-        oldStock,
-        newStock: sizeObj.stock,
-        quantityDeducted: item.quantity
-      });
     }
 
-    // Calculate totals
-    const backendTotal = cart.products.reduce((sum, item) => {
-      const price = item.productId?.price || 0;
-      return sum + price * item.quantity;
-    }, 0);
-
-    if (clientTotal && Math.abs(clientTotal - backendTotal) > 2) {
-      console.warn("⚠️ Frontend and backend totals mismatch");
-    }
+    // Step 2: Calculate totals
+    const backendTotal = cart.products.reduce(
+      (sum, item) => sum + (item.productId?.price || 0) * item.quantity,
+      0
+    );
 
     const shippingCharge = 15;
     const deliveryCharges = 50;
     const finalTotal = Math.round(backendTotal + shippingCharge + deliveryCharges);
 
-    cart.totalPrice = finalTotal;
-    await cart.save();
+    if (clientTotal && Math.abs(clientTotal - backendTotal) > 2) {
+      console.warn("Frontend and backend totals mismatch");
+    }
 
-    // Get shipping address
+    // Step 3: Get shipping address
     const pendingOrder = await Order.findOne({ user: userId, status: "pending" });
     if (!pendingOrder || !pendingOrder.shippingAddress) {
       return res.status(400).json({ message: "No saved address found" });
     }
 
-    // ✅ Create the order
+    // Step 4: Create new order
     const newOrder = new Order({
       user: userId,
       shippingAddress: pendingOrder.shippingAddress,
@@ -170,62 +116,45 @@ const placeCODOrder = async (req, res) => {
     });
 
     await newOrder.save();
-    console.log("✅ Order created:", newOrder.customOrderId);
 
-    // Clear cart
+    // Step 5: Clear cart and pending order
     cart.products = [];
     cart.totalPrice = 0;
     await cart.save();
-
-    // Delete the pending order used for address storage
     await Order.deleteOne({ _id: pendingOrder._id });
-
-    console.log("✅ Stock updates summary:", stockUpdates);
 
     res.status(201).json({
       success: true,
-      message: "✅ COD Order placed successfully and stock updated",
+      message: "COD order placed successfully",
       order: newOrder,
-      stockUpdates // Debug info
     });
-
-  } catch (error) {
-    console.error("❌ COD order error:", error);
-    res.status(500).json({ 
-      message: "Server error while placing order",
-      error: error.message 
-    });
+  } catch {
+    res.status(500).json({ success: false, message: "Server error while placing order" });
   }
 };
 
-// ✅ Get all user orders
+// ✅ Get all orders for the logged-in user
 const getAllUserOrders = async (req, res) => {
   try {
     const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     const orders = await Order.find({ user: userId })
       .populate("items.productId", "name brand price image")
       .sort({ createdAt: -1 });
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "User orders fetched successfully",
       totalOrders: orders.length,
       orders,
     });
-  } catch (error) {
-    console.error("❌ Error in getAllUserOrders:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-    });
+  } catch {
+    res.status(500).json({ success: false, message: "Server error while fetching user orders" });
   }
 };
 
-// ✅ Get all orders (for admin)
+// ✅ Get all orders (admin only)
 const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
@@ -243,16 +172,12 @@ const getAllOrders = async (req, res) => {
       totalOrders: orders.length,
       orders,
     });
-  } catch (error) {
-    console.error("❌ Error in getAllOrders:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal Server Error while fetching all orders",
-    });
+  } catch {
+    res.status(500).json({ success: false, message: "Server error while fetching all orders" });
   }
 };
 
-// ✅ Update order status (admin)
+// ✅ Update order status (admin only)
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -273,9 +198,8 @@ const updateOrderStatus = async (req, res) => {
       message: `Order status updated to ${status}`,
       updatedOrder: order,
     });
-  } catch (error) {
-    console.error("❌ Error updating order status:", error);
-    res.status(500).json({ message: "Server error while updating order status" });
+  } catch {
+    res.status(500).json({ success: false, message: "Server error while updating order status" });
   }
 };
 
@@ -283,6 +207,6 @@ module.exports = {
   saveShippingAddress,
   placeCODOrder,
   getAllUserOrders,
+  getAllOrders,
   updateOrderStatus,
-  getAllOrders
 };

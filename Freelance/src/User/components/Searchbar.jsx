@@ -38,7 +38,7 @@ export default function SearchBar() {
 
   return (
     <ClickAwayListener onClickAway={() => setOpen(false)}>
-      <div style={{ position: "relative", width: "450px" }}>
+      <div style={{ position: "relative", width: "500px" }}>
         <Paper
           component="form"
           onSubmit={(e) => e.preventDefault()}

@@ -13,18 +13,11 @@ const useProductStore = create(
       fetchProducts: async () => {
         set({ loading: true, error: null });
         try {
-          console.log("Fetching products...");
-          
-          const res = await fetch(
-            "http://localhost:5000/api/product/getAllProduct",
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              credentials: "include", 
-            }
-          );
+          const res = await fetch(`${API_BASE}/product/getAllProduct`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          });
           if (!res.ok) throw new Error("Failed to fetch products");
           const data = await res.json();
           set({ products: data.data || [], loading: false });
@@ -102,8 +95,6 @@ const useProductStore = create(
             }
           }
 
-          console.log("📤 Adding product...");
-
           const res = await fetch(`${API_BASE}/product/addProduct`, {
             method: "POST",
             credentials: "include",
@@ -116,7 +107,6 @@ const useProductStore = create(
           }
 
           const data = await res.json();
-          console.log("✅ Product added:", data);
           const product = data.data || data.product || data;
 
           set((state) => ({
@@ -126,7 +116,6 @@ const useProductStore = create(
 
           return product;
         } catch (err) {
-          console.error("❌ Add product error:", err);
           set({ error: err.message, loading: false });
           throw err;
         }
@@ -136,7 +125,6 @@ const useProductStore = create(
         set({ loading: true, error: null });
         try {
           const isFormData = data instanceof FormData;
-          
           const options = {
             method: "PUT",
             credentials: "include",
@@ -144,17 +132,10 @@ const useProductStore = create(
           };
 
           if (!isFormData) {
-            options.headers = {
-              'Content-Type': 'application/json'
-            };
+            options.headers = { "Content-Type": "application/json" };
           }
 
-          console.log('📤 Updating product:', id, isFormData ? 'FormData' : 'JSON');
-
-          const res = await fetch(
-            `http://localhost:5000/api/product/updateProduct/${id}`,
-            options
-          );
+          const res = await fetch(`${API_BASE}/product/updateProduct/${id}`, options);
 
           if (!res.ok) {
             const errorData = await res.json().catch(() => ({}));
@@ -162,7 +143,6 @@ const useProductStore = create(
           }
 
           const response = await res.json();
-          console.log('✅ Product updated:', response);
 
           if (response.success) {
             set((state) => ({
@@ -174,7 +154,6 @@ const useProductStore = create(
             return response.data;
           }
         } catch (error) {
-          console.error("❌ Update product error:", error);
           set({ loading: false, error: error.message });
           throw error;
         }
@@ -205,11 +184,6 @@ const useProductStore = create(
         }
       },
 
-      // ============================================
-      // NEW IMAGE MANAGEMENT FUNCTIONS
-      // ============================================
-
-      // Delete a specific image from a product
       deleteImage: async (productId, imageId) => {
         try {
           set({ loading: true, error: null });
@@ -229,10 +203,8 @@ const useProductStore = create(
           }
 
           const response = await res.json();
-          console.log("✅ Image deleted:", response);
 
           if (response.success) {
-            // Update the product in state with the new data
             set((state) => ({
               products: state.products.map((p) =>
                 p._id === productId ? response.data : p
@@ -242,13 +214,11 @@ const useProductStore = create(
             return response.data;
           }
         } catch (error) {
-          console.error("❌ Delete image error:", error);
           set({ loading: false, error: error.message });
           throw error;
         }
       },
 
-      // Set a specific image as primary
       setPrimaryImage: async (productId, imageId) => {
         try {
           set({ loading: true, error: null });
@@ -268,7 +238,6 @@ const useProductStore = create(
           }
 
           const response = await res.json();
-          console.log("✅ Primary image set:", response);
 
           if (response.success) {
             set((state) => ({
@@ -280,13 +249,11 @@ const useProductStore = create(
             return response.data;
           }
         } catch (error) {
-          console.error("❌ Set primary image error:", error);
           set({ loading: false, error: error.message });
           throw error;
         }
       },
 
-      // Reorder images
       reorderImages: async (productId, imageOrder) => {
         try {
           set({ loading: true, error: null });
@@ -307,7 +274,6 @@ const useProductStore = create(
           }
 
           const response = await res.json();
-          console.log("✅ Images reordered:", response);
 
           if (response.success) {
             set((state) => ({
@@ -319,30 +285,23 @@ const useProductStore = create(
             return response.data;
           }
         } catch (error) {
-          console.error("❌ Reorder images error:", error);
           set({ loading: false, error: error.message });
           throw error;
         }
       },
 
-      // Add images to existing product
       addImages: async (productId, images) => {
         try {
           set({ loading: true, error: null });
 
           const formData = new FormData();
-          images.forEach((image) => {
-            formData.append("images", image);
-          });
+          images.forEach((image) => formData.append("images", image));
 
-          const res = await fetch(
-            `${API_BASE}/product/addImages/${productId}`,
-            {
-              method: "POST",
-              credentials: "include",
-              body: formData,
-            }
-          );
+          const res = await fetch(`${API_BASE}/product/addImages/${productId}`, {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          });
 
           if (!res.ok) {
             const errorData = await res.json().catch(() => ({}));
@@ -350,7 +309,6 @@ const useProductStore = create(
           }
 
           const response = await res.json();
-          console.log("✅ Images added:", response);
 
           if (response.success) {
             set((state) => ({
@@ -362,7 +320,6 @@ const useProductStore = create(
             return response.data;
           }
         } catch (error) {
-          console.error("❌ Add images error:", error);
           set({ loading: false, error: error.message });
           throw error;
         }

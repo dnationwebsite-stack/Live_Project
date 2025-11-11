@@ -4,19 +4,17 @@ const User = require("../models/userModel");
 
 exports.getDashboardStats = async (req, res) => {
   try {
-    // sab parallel fetch hoga — fast response
     const [totalProducts, totalOrders, totalCustomers, recentOrders] = await Promise.all([
       Product.countDocuments(),
       Order.countDocuments(),
       User.countDocuments(),
       Order.find()
-        .populate("user", "name email") // user ka name/email milega
+        .populate("user", "name email") 
         .sort({ createdAt: -1 })
         .limit(6)
         .select("user totalPrice status createdAt"),
     ]);
 
-    // Frontend ke liye clean structure
     const formattedOrders = recentOrders.map((order) => ({
       _id: order._id,
       customOrderId: order.customOrderId?._id || "N/A",

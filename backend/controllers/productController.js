@@ -598,15 +598,11 @@ exports.deleteProduct = async (req, res) => {
         message: "Product not found"
       });
     }
-
-    // Delete all images from Cloudinary
     for (const image of product.images) {
       if (image.publicId) {
         try {
           await cloudinary.uploader.destroy(image.publicId);
         } catch (cloudinaryError) {
-          console.error(`Failed to delete image ${image.publicId} from Cloudinary:`, cloudinaryError);
-          // Continue with deletion even if some images fail
         }
       }
     }
@@ -618,7 +614,6 @@ exports.deleteProduct = async (req, res) => {
       message: "Product deleted successfully"
     });
   } catch (error) {
-    console.error("Delete Product Error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to delete product",
