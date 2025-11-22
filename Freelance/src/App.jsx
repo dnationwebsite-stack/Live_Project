@@ -45,9 +45,7 @@ function App() {
         <Route 
           path="/admin" 
           element={
-            <ProtectedAdminRoute>
               <AdminPanel />
-            </ProtectedAdminRoute>
           } 
         />
         

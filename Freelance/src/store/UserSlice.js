@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import cartStore from "./CartSlice";
 
 const API_BASE = "http://localhost:5000/api/";
 
@@ -8,8 +7,8 @@ export const useUserStore = create(
   persist(
     (set, get) => ({
       user: null,
-      orders: [],
-      customers: [],
+      orders: [], // ⚠️ This will NOT be persisted anymore
+      customers: [], // ⚠️ This will NOT be persisted anymore
       token: null,
       isAuthenticated: false,
       loading: false,
@@ -17,14 +16,11 @@ export const useUserStore = create(
       addresses: [],
       shippingAddresses: [],
       selectedShippingAddressId: null,
-
       selectedAddress: null,
+
       setSelectedAddress: (address) => set({ selectedAddress: address }),
-
       selectShippingAddress: (id) => set({ selectedShippingAddressId: id }),
-
-      setShippingAddresses: (addresses) =>
-        set({ shippingAddresses: addresses }),
+      setShippingAddresses: (addresses) => set({ shippingAddresses: addresses }),
 
       requestOtp: async (email) => {
         set({ loading: true, error: null });
@@ -96,6 +92,8 @@ export const useUserStore = create(
             credentials: "include",
           });
           if (!res.ok) throw new Error("Logout failed");
+          
+          // ✅ Clear everything including orders
           set({
             user: null,
             token: null,
@@ -103,9 +101,10 @@ export const useUserStore = create(
             addresses: [],
             shippingAddresses: [],
             selectedShippingAddressId: null,
+            orders: [], // ✅ Clear orders on logout
+            customers: [], // ✅ Clear customers on logout
           });
         } catch (error) {
-          console.error("Logout error:", error);
         }
       },
 
@@ -209,6 +208,7 @@ export const useUserStore = create(
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
+          credentials: "include",
           body: JSON.stringify({
             paymentMode: "COD",
             address: selectedAddress,
@@ -228,7 +228,6 @@ export const useUserStore = create(
         }
 
         try {
-          // ✅ ADD: Cache buster with timestamp to force fresh data
           const res = await fetch(
             `${API_BASE}payment/check-discount?_t=${Date.now()}`,
             {
@@ -236,25 +235,20 @@ export const useUserStore = create(
               headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
-                "Cache-Control": "no-cache, no-store, must-revalidate", // ✅ ADD
-                Pragma: "no-cache", // ✅ ADD
-                Expires: "0", // ✅ ADD
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                Pragma: "no-cache",
+                Expires: "0",
               },
+              credentials: "include",
             }
           );
 
           const data = await res.json();
           if (!res.ok) {
-            console.error("Failed to check discount:", data.message);
             return { isEligible: false, discountPercentage: 0 };
           }
-
-          // ✅ ADD: Log for debugging
-          console.log("✅ Discount check result:", data);
-
-          return data; // Returns { isEligible: true/false, discountPercentage: 5/0 }
+          return data;
         } catch (err) {
-          console.error("Error checking discount:", err);
           return { isEligible: false, discountPercentage: 0 };
         }
       },
@@ -269,6 +263,7 @@ export const useUserStore = create(
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
+            credentials: "include",
             body: JSON.stringify({ amount }),
           });
 
@@ -344,6 +339,7 @@ export const useUserStore = create(
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${get().token}`,
                       },
+                      credentials: "include",
                       body: JSON.stringify({
                         razorpay_order_id: response.razorpay_order_id,
                         razorpay_payment_id: response.razorpay_payment_id,
@@ -365,7 +361,6 @@ export const useUserStore = create(
                     );
                   }
 
-                  // ✅ FIX: Show different messages based on whether discount was applied
                   if (
                     verifyData.isFirstOrder &&
                     verifyData.discountApplied > 0
@@ -424,13 +419,14 @@ export const useUserStore = create(
       },
 
       fetchUsers: async () => {
+        const { token } = get();
         try {
           set({ loading: true, error: null });
           const res = await fetch(`${API_BASE}users/getAllUser`, {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${get().token}`,
+              Authorization: `Bearer ${token}`,
             },
             credentials: "include",
           });
@@ -442,7 +438,7 @@ export const useUserStore = create(
           set({ customers: data.users || [] });
           return data.users;
         } catch (err) {
-          set({ error: err.message });
+          set({ error: err.message, customers: [] }); // ✅ Clear on error
           throw err;
         } finally {
           set({ loading: false });
@@ -460,23 +456,32 @@ export const useUserStore = create(
           });
 
           if (!res.ok) {
-            const errData = await res.json();
+            const errData = await res.json().catch(() => ({}));
             throw new Error(errData.message || "Failed to fetch orders");
           }
 
           const data = await res.json();
           set({ orders: data.orders || [], loading: false });
+          return data.orders;
         } catch (error) {
-          set({ loading: false });
+          set({ loading: false, orders: [], error: error.message }); // ✅ Clear on error
         }
       },
 
       fetchAllOrders: async () => {
-        const { token } = get();
+        const { token, user } = get();
+        
+        if (!token) {
+          set({ error: "Authentication required", loading: false, orders: [] });
+          return [];
+        }
+
         try {
           set({ loading: true, error: null });
 
-          const res = await fetch(`${API_BASE}order/all-orders`, {
+          const url = `${API_BASE}order/all-orders`;
+
+          const res = await fetch(url, {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -485,35 +490,56 @@ export const useUserStore = create(
             credentials: "include",
           });
 
-          const data = await res.json();
-          if (!res.ok)
-            throw new Error(data.message || "Failed to fetch all orders");
+          if (!res.ok) {
+            const errorText = await res.text();
+            
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              errorData = { message: errorText };
+            }
+            
+            throw new Error(errorData.message || `HTTP ${res.status}: ${res.statusText}`);
+          }
 
-          set({ orders: data.orders || [], loading: false });
-          return data.orders;
+          const data = await res.json();
+
+          set({ orders: data.orders || [], loading: false, error: null });
+          return data.orders || [];
         } catch (error) {
-          set({ error: error.message, loading: false });
+          set({ 
+            error: error.message, 
+            loading: false, 
+            orders: [] // ✅ Clear orders on error
+          });
+          return [];
         }
       },
 
       handleStatusChange: async (orderId, newStatus) => {
+        const { token } = get();
         try {
           const res = await fetch(`${API_BASE}order/status/${orderId}`, {
             method: "PUT",
             credentials: "include",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({ status: newStatus }),
           });
 
           const data = await res.json();
           if (res.ok) {
             alert(`Order status updated to ${newStatus}`);
-            await get().fetchUserOrders();
+            // Refresh orders after update
+            await get().fetchAllOrders();
           } else {
-            alert(data.message);
+            alert(data.message || "Failed to update status");
           }
         } catch (error) {
-          console.error("❌ Update status error:", error);
+          alert("Failed to update order status");
         }
       },
 
@@ -562,6 +588,7 @@ export const useUserStore = create(
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email }),
+            credentials: "include",
           });
 
           const data = await response.json();
@@ -576,6 +603,19 @@ export const useUserStore = create(
         }
       },
     }),
-    { name: "user-storage" }
+    {
+      name: "user-storage",
+      // ✅ CRITICAL: Only persist authentication data, NOT orders or customers
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+        addresses: state.addresses,
+        shippingAddresses: state.shippingAddresses,
+        selectedShippingAddressId: state.selectedShippingAddressId,
+        selectedAddress: state.selectedAddress,
+        // orders and customers are intentionally NOT included here
+      }),
+    }
   )
 );

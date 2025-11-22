@@ -35,7 +35,7 @@ const saveShippingAddress = async (req, res) => {
       message: "Shipping address saved successfully",
       shippingAddress: order.shippingAddress,
     });
-  } catch {
+  } catch (error) {
     res.status(500).json({ success: false, message: "Server error while saving shipping address" });
   }
 };
@@ -88,7 +88,6 @@ const placeCODOrder = async (req, res) => {
     const finalTotal = Math.round(backendTotal + shippingCharge + deliveryCharges);
 
     if (clientTotal && Math.abs(clientTotal - backendTotal) > 2) {
-      console.warn("Frontend and backend totals mismatch");
     }
 
     // Step 3: Get shipping address
@@ -128,7 +127,7 @@ const placeCODOrder = async (req, res) => {
       message: "COD order placed successfully",
       order: newOrder,
     });
-  } catch {
+  } catch (error) {
     res.status(500).json({ success: false, message: "Server error while placing order" });
   }
 };
@@ -149,31 +148,34 @@ const getAllUserOrders = async (req, res) => {
       totalOrders: orders.length,
       orders,
     });
-  } catch {
+  } catch (error) {
     res.status(500).json({ success: false, message: "Server error while fetching user orders" });
   }
 };
 
-// ✅ Get all orders (admin only)
+// ✅ Get all orders (admin only) - FIXED VERSION
 const getAllOrders = async (req, res) => {
   try {
+    
     const orders = await Order.find()
       .populate("user", "name email")
       .populate("items.productId", "name brand price image")
       .sort({ createdAt: -1 });
 
-    if (!orders.length) {
-      return res.status(404).json({ message: "No orders found" });
-    }
 
+    // ✅ FIXED: Return 200 with empty array instead of 404
     res.status(200).json({
       success: true,
-      message: "All orders fetched successfully",
+      message: orders.length === 0 ? "No orders yet" : "All orders fetched successfully",
       totalOrders: orders.length,
-      orders,
+      orders: orders, // Always return array (empty or filled)
     });
-  } catch {
-    res.status(500).json({ success: false, message: "Server error while fetching all orders" });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error while fetching all orders",
+      error: error.message 
+    });
   }
 };
 
@@ -198,8 +200,12 @@ const updateOrderStatus = async (req, res) => {
       message: `Order status updated to ${status}`,
       updatedOrder: order,
     });
-  } catch {
-    res.status(500).json({ success: false, message: "Server error while updating order status" });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error while updating order status",
+      error: error.message 
+    });
   }
 };
 

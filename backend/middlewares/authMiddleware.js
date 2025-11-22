@@ -2,20 +2,23 @@
 const jwt = require("jsonwebtoken");
 
 const authMiddleware = (requiredRole = null) => {
-  
   return (req, res, next) => {
-
     try {
       let token = null;
 
-      // Check cookie
-      if (req.cookies?.token) token = req.cookies.token;
+      // Check cookie first
+      if (req.cookies?.token) {
+        token = req.cookies.token;
+      }
       // Check Authorization header
-      else if (req.headers.authorization?.startsWith("Bearer "))
+      else if (req.headers.authorization?.startsWith("Bearer ")) {
         token = req.headers.authorization.split(" ")[1];
+      }
 
-      if (!token)
+      if (!token) {
         return res.status(401).json({ message: "Unauthorized: Token missing" });
+      }
+
 
       let decoded;
       try {
@@ -29,14 +32,23 @@ const authMiddleware = (requiredRole = null) => {
         });
       }
 
+      // ✅ CRITICAL FIX: Check multiple possible ID fields
+      const userId = decoded._id || decoded.id || decoded.userId || decoded.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized: Invalid token structure" });
+      }
+
       req.user = {
-        id: decoded._id,
+        id: userId,
         email: decoded.email,
         role: decoded.role,
       };
 
-      if (requiredRole && req.user.role !== requiredRole)
+      if (requiredRole && req.user.role !== requiredRole) {
+       
         return res.status(403).json({ message: "Forbidden: Access denied" });
+      }
 
       next();
     } catch (err) {

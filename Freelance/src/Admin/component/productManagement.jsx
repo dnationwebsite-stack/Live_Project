@@ -255,7 +255,7 @@ export default function ProductManagement() {
 
     try {
       await deleteImage(editingId, imageId);
-      
+
       // Update local state
       const updatedProduct = products.find((p) => p._id === editingId);
       if (updatedProduct) {
@@ -264,7 +264,7 @@ export default function ProductManagement() {
           existingImages: updatedProduct.images || [],
         }));
       }
-      
+
       toast.success("Image deleted from server");
       await fetchProducts();
     } catch (error) {
@@ -276,7 +276,7 @@ export default function ProductManagement() {
   const handleSetPrimary = async (imageId) => {
     try {
       await setPrimaryImage(editingId, imageId);
-      
+
       const updatedProduct = products.find((p) => p._id === editingId);
       if (updatedProduct) {
         setFormData((prev) => ({
@@ -284,7 +284,7 @@ export default function ProductManagement() {
           existingImages: updatedProduct.images || [],
         }));
       }
-      
+
       toast.success("Primary image updated");
       await fetchProducts();
     } catch (error) {
@@ -355,9 +355,24 @@ export default function ProductManagement() {
 
           <button
             onClick={() => {
-              setShowForm(true);
               setEditingId(null);
-              resetForm();
+              setFormData({
+                name: "",
+                price: "",
+                category: categories[0] || "Jersey",
+                subcategory: "",
+                brand: "",
+                description: "",
+                existingImages: [],
+                newImages: [],
+                sizes: [],
+                status: "Active",
+              });
+              newImagePreviews.forEach((p) => {
+                if (p.startsWith("blob:")) URL.revokeObjectURL(p);
+              });
+              setNewImagePreviews([]);
+              setShowForm(true); // ✅ Set this AFTER resetting data
               setTimeout(() => {
                 formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
               }, 150);
@@ -505,9 +520,8 @@ export default function ProductManagement() {
                         onDragStart={(e) => handleDragStart(e, index)}
                         onDragOver={(e) => handleDragOver(e, index)}
                         onDragEnd={handleDragEnd}
-                        className={`relative group border-2 rounded-lg overflow-hidden cursor-move ${
-                          draggingIndex === index ? "opacity-50" : ""
-                        } ${image.isPrimary ? "border-blue-500" : "border-gray-200"}`}
+                        className={`relative group border-2 rounded-lg overflow-hidden cursor-move ${draggingIndex === index ? "opacity-50" : ""
+                          } ${image.isPrimary ? "border-blue-500" : "border-gray-200"}`}
                       >
                         <img
                           src={image.url}
@@ -697,13 +711,12 @@ export default function ProductManagement() {
                 <p className="text-sm">
                   Status:{" "}
                   <span
-                    className={`font-bold ${
-                      product.status === "Out of Stock"
+                    className={`font-bold ${product.status === "Out of Stock"
                         ? "text-red-500"
                         : product.status === "Limited"
-                        ? "text-orange-500"
-                        : "text-green-600"
-                    }`}
+                          ? "text-orange-500"
+                          : "text-green-600"
+                      }`}
                   >
                     {product.status}
                   </span>
