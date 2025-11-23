@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-const API_BASE = "https://api.dripnation.co.in/api/admin";
+const API_BASE = "http://api.dripnation.co.in/api/admin";
 
 export const useCustomerStore = create((set, get) => ({
   customers: [],
