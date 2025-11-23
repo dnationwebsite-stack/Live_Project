@@ -9,23 +9,26 @@ const cookieParser = require("cookie-parser");
 
 const app = express();
 
-/* -------- MIDDLEWARE -------- */
+/* ---------------------- MIDDLEWARE ---------------------- */
 app.use(express.json());
 app.use(cookieParser());
 
 connectDB();
 
-/* ---------- IMPORTANT CORS FIX (for production) ---------- */
+/* ---------------------- CORS FIX ------------------------- */
+/* Add your domain + IP + localhost for development */
 app.use(cors({
     origin: [
-        "http://localhost:5173",          // local dev
-        "http://dripnation.co.in",        // your live frontend domain
-        "http://82.112.231.28"              // if accessing directly via IP
+        "http://localhost:5173",           // Local development
+        "http://dripnation.co.in",         // Live domain
+        "https://dripnation.co.in",        // If you use HTTPS
+        "http://82.112.231.28",            // VPS public IP
+        "http://82.112.231.28:5000"        // Allow IP with port
     ],
     credentials: true
 }));
 
-/* -------- ROUTES -------- */
+/* ---------------------- ROUTES --------------------------- */
 const userRoutes = require("./routes/userRoutes");
 const productRoutes = require("./routes/productRoutes");
 const cartRoutes = require("./routes/cartRoutes");
@@ -43,8 +46,10 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/dash", getDashboardStats);
 app.use("/api/admin", coustomerRoutes);
 
-/* -------- START SERVER -------- */
+/* ---------------------- START SERVER ----------------------- */
 const PORT = process.env.PORT || 5000;
+
+// IMPORTANT: "0.0.0.0" makes the server accessible publicly
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://82.112.231.28:${PORT}`);
+    console.log(`🚀 Server running at: http://82.112.231.28:${PORT}`);
 });
