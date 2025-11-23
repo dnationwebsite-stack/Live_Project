@@ -7,8 +7,8 @@ export const useUserStore = create(
   persist(
     (set, get) => ({
       user: null,
-      orders: [], // ⚠️ This will NOT be persisted anymore
-      customers: [], // ⚠️ This will NOT be persisted anymore
+      orders: [], 
+      customers: [],
       token: null,
       isAuthenticated: false,
       loading: false,
