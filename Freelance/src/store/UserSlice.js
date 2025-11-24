@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 // Correct API Base (no HTTPS unless reverse proxy exists)  
-const API_BASE = "http://localhost:5000/api/";
+const API_BASE = "http://82.112.231.28:5000/api/";
 
 export const useUserStore = create(
   persist(
