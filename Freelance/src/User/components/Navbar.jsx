@@ -91,11 +91,12 @@ export default function UrbanMonkeyHeader() {
     };
     checkDiscount();
   }, [isAuthenticated, isCartOpen, checkWelcomeDiscount]);
-
   useEffect(() => {
-    fetchCart();
-    if (isAuthenticated) getAddresses();
-  }, [fetchCart, isAuthenticated, getAddresses]);
+    if (isAuthenticated) {
+      fetchCart();
+      getAddresses();
+    }
+  }, [isAuthenticated, fetchCart, getAddresses]);
 
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 

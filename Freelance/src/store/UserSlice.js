@@ -103,12 +103,22 @@ export const useUserStore = create(
       },
 
       saveAddress: async (address) => {
+        const { token, isAuthenticated } = get();
+        
+        // Check authentication
+        if (!isAuthenticated || !token) {
+          throw new Error("Please login to save address");
+        }
+
         try {
           set({ loading: true, error: null });
 
           const res = await fetch(`${API_BASE}users/saveAddress`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
             credentials: "include",
             body: JSON.stringify(address),
           });
@@ -133,34 +143,65 @@ export const useUserStore = create(
       },
 
       getAddresses: async () => {
+        const { token, isAuthenticated } = get();
+        
+        // ✅ FIX: Check authentication before making request
+        if (!isAuthenticated || !token) {
+          set({ addresses: [], shippingAddresses: [] });
+          return [];
+        }
+
         try {
           set({ loading: true, error: null });
 
           const res = await fetch(`${API_BASE}users/getAddresses`, {
             method: "GET",
+            headers: {
+              "Authorization": `Bearer ${token}`
+            },
             credentials: "include",
           });
+
+          // ✅ FIX: Handle 401 gracefully
+          if (res.status === 401) {
+            set({ 
+              addresses: [], 
+              shippingAddresses: [],
+              loading: false,
+              error: null 
+            });
+            return [];
+          }
 
           const data = await res.json();
           if (!res.ok)
             throw new Error(data.message || "Failed to fetch addresses");
 
           set({
-            addresses: data.addresses,
-            shippingAddresses: data.addresses,
+            addresses: data.addresses || [],
+            shippingAddresses: data.addresses || [],
+            loading: false
           });
 
-          return data.addresses;
+          return data.addresses || [];
         } catch (err) {
-          set({ error: err.message });
-          throw err;
-        } finally {
-          set({ loading: false });
+          set({ 
+            error: err.message, 
+            addresses: [], 
+            shippingAddresses: [],
+            loading: false 
+          });
+          return [];
         }
       },
 
       saveShippingAddress: async (address) => {
-        const { token } = get();
+        const { token, isAuthenticated } = get();
+        
+        if (!isAuthenticated || !token) {
+          throw new Error("Please login to save shipping address");
+        }
+
         try {
           set({ loading: true, error: null });
 
@@ -195,7 +236,11 @@ export const useUserStore = create(
       },
 
       placeCODOrder: async () => {
-        const { token, selectedAddress } = get();
+        const { token, selectedAddress, isAuthenticated } = get();
+
+        if (!isAuthenticated || !token) {
+          throw new Error("Please login to place order");
+        }
 
         if (!selectedAddress) throw new Error("No address selected");
 
@@ -219,8 +264,11 @@ export const useUserStore = create(
       },
 
       checkWelcomeDiscount: async () => {
-        const { token } = get();
-        if (!token) return { isEligible: false, discountPercentage: 0 };
+        const { token, isAuthenticated } = get();
+        
+        if (!isAuthenticated || !token) {
+          return { isEligible: false, discountPercentage: 0 };
+        }
 
         try {
           const res = await fetch(
@@ -246,7 +294,12 @@ export const useUserStore = create(
       },
 
       createRazorpayOrder: async (amount) => {
-        const { token } = get();
+        const { token, isAuthenticated } = get();
+        
+        if (!isAuthenticated || !token) {
+          throw new Error("Please login to create order");
+        }
+
         try {
           set({ loading: true, error: null });
 
@@ -270,6 +323,71 @@ export const useUserStore = create(
           throw err;
         } finally {
           set({ loading: false });
+        }
+      },
+
+      initiateRazorpayPayment: async (amount, cartItems, address) => {
+        const { token, createRazorpayOrder } = get();
+        
+        if (!token) {
+          throw new Error("Please login to make payment");
+        }
+
+        try {
+          // Create Razorpay order
+          const order = await createRazorpayOrder(amount);
+          
+          return new Promise((resolve, reject) => {
+            const options = {
+              key: "YOUR_RAZORPAY_KEY_ID", // Replace with your actual key
+              amount: order.amount,
+              currency: order.currency,
+              name: "DRIP NATION",
+              description: "Order Payment",
+              order_id: order.id,
+              handler: async function (response) {
+                try {
+                  // Verify payment on backend
+                  const verifyRes = await fetch(`${API_BASE}payment/verify`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${token}`,
+                    },
+                    credentials: "include",
+                    body: JSON.stringify({
+                      razorpay_order_id: response.razorpay_order_id,
+                      razorpay_payment_id: response.razorpay_payment_id,
+                      razorpay_signature: response.razorpay_signature,
+                      address: address,
+                    }),
+                  });
+
+                  const data = await verifyRes.json();
+                  if (!verifyRes.ok) throw new Error(data.message || "Payment verification failed");
+                  
+                  resolve(data);
+                } catch (err) {
+                  reject(err);
+                }
+              },
+              prefill: {
+                name: address.fullName,
+                contact: address.phoneNumber,
+              },
+              theme: {
+                color: "#000000",
+              },
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on("payment.failed", function (response) {
+              reject(new Error(response.error.description));
+            });
+            rzp.open();
+          });
+        } catch (err) {
+          throw err;
         }
       },
     }),
