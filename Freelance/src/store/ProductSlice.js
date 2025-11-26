@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-const API_BASE = "http://api.dripnation.co.in/api";
+const API_BASE = "http://82.112.231.28:5000/api";
 
 const useProductStore = create(
   persist(
