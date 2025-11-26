@@ -1,6 +1,6 @@
 import React, { useEffect } from "react"
 import { Package, ShoppingCart, Users, Activity } from "lucide-react"
-import { useUserStore } from "../../store/UserSlice" // ⚡ update path if needed
+import { useUserStore } from "../../store/UserSlice"
 
 export function Dashboard() {
   const { dashboardStats, fetchDashboardSummary, loading } = useUserStore()
@@ -9,13 +9,19 @@ export function Dashboard() {
     fetchDashboardSummary()
   }, [fetchDashboardSummary])
 
-  const { totalProducts, totalOrders, totalCustomers, recentOrders } = dashboardStats
+  // ✅ FIX: Add fallback empty object and default values
+  const { 
+    totalProducts = 0, 
+    totalOrders = 0, 
+    totalCustomers = 0, 
+    recentOrders = [] 
+  } = dashboardStats || {}
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <h2 className="text-3xl font-bold text-gray-800 mb-8">📊 Dashboard Overview</h2>
 
-      {/* 🔹 Summary Cards */}
+      {/* Rest of your code remains the same */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
         {[
           { label: "Total Products", value: totalProducts, icon: Package, color: "bg-blue-50 text-blue-600" },
@@ -44,7 +50,7 @@ export function Dashboard() {
         })}
       </div>
 
-      {/* 🔹 Recent Orders Section */}
+      {/* Recent Orders Section */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
         <div className="flex items-center gap-2 mb-4">
           <Activity className="text-blue-600" />

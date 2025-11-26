@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useUserStore } from "./UserSlice"; // ✅ Import to access token
 
 const API_BASE = "http://82.112.231.28:5000/api";
 
@@ -62,6 +63,13 @@ const useProductStore = create(
         try {
           set({ loading: true, error: null });
 
+          // ✅ Get token from UserSlice
+          const token = useUserStore.getState().token;
+          
+          if (!token) {
+            throw new Error("Unauthorized: Token missing");
+          }
+
           let formData;
           if (productData instanceof FormData) {
             formData = productData;
@@ -97,6 +105,9 @@ const useProductStore = create(
 
           const res = await fetch(`${API_BASE}/product/addProduct`, {
             method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`, // ✅ Add token
+            },
             credentials: "include",
             body: formData,
           });
@@ -124,15 +135,26 @@ const useProductStore = create(
       updateProduct: async (id, data) => {
         set({ loading: true, error: null });
         try {
+          // ✅ Get token
+          const token = useUserStore.getState().token;
+          
+          if (!token) {
+            throw new Error("Unauthorized: Token missing");
+          }
+
           const isFormData = data instanceof FormData;
           const options = {
             method: "PUT",
             credentials: "include",
             body: isFormData ? data : JSON.stringify(data),
+            headers: {
+              "Authorization": `Bearer ${token}`, // ✅ Add token
+            }
           };
 
+          // Only add Content-Type for JSON, not FormData
           if (!isFormData) {
-            options.headers = { "Content-Type": "application/json" };
+            options.headers["Content-Type"] = "application/json";
           }
 
           const res = await fetch(`${API_BASE}/product/updateProduct/${id}`, options);
@@ -163,10 +185,20 @@ const useProductStore = create(
         try {
           set({ loading: true, error: null });
 
+          // ✅ Get token
+          const token = useUserStore.getState().token;
+          
+          if (!token) {
+            throw new Error("Unauthorized: Token missing");
+          }
+
           const res = await fetch(`${API_BASE}/product/deleteProduct/${id}`, {
             method: "DELETE",
             credentials: "include",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`, // ✅ Add token
+            },
           });
 
           if (!res.ok) {
@@ -188,12 +220,22 @@ const useProductStore = create(
         try {
           set({ loading: true, error: null });
 
+          // ✅ Get token
+          const token = useUserStore.getState().token;
+          
+          if (!token) {
+            throw new Error("Unauthorized: Token missing");
+          }
+
           const res = await fetch(
             `${API_BASE}/product/deleteImage/${productId}/${imageId}`,
             {
               method: "DELETE",
               credentials: "include",
-              headers: { "Content-Type": "application/json" },
+              headers: { 
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`, // ✅ Add token
+              },
             }
           );
 
@@ -223,12 +265,22 @@ const useProductStore = create(
         try {
           set({ loading: true, error: null });
 
+          // ✅ Get token
+          const token = useUserStore.getState().token;
+          
+          if (!token) {
+            throw new Error("Unauthorized: Token missing");
+          }
+
           const res = await fetch(
             `${API_BASE}/product/setPrimaryImage/${productId}/${imageId}`,
             {
               method: "PUT",
               credentials: "include",
-              headers: { "Content-Type": "application/json" },
+              headers: { 
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`, // ✅ Add token
+              },
             }
           );
 
@@ -258,12 +310,22 @@ const useProductStore = create(
         try {
           set({ loading: true, error: null });
 
+          // ✅ Get token
+          const token = useUserStore.getState().token;
+          
+          if (!token) {
+            throw new Error("Unauthorized: Token missing");
+          }
+
           const res = await fetch(
             `${API_BASE}/product/reorderImages/${productId}`,
             {
               method: "PUT",
               credentials: "include",
-              headers: { "Content-Type": "application/json" },
+              headers: { 
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`, // ✅ Add token
+              },
               body: JSON.stringify({ imageOrder }),
             }
           );
@@ -294,12 +356,22 @@ const useProductStore = create(
         try {
           set({ loading: true, error: null });
 
+          // ✅ Get token
+          const token = useUserStore.getState().token;
+          
+          if (!token) {
+            throw new Error("Unauthorized: Token missing");
+          }
+
           const formData = new FormData();
           images.forEach((image) => formData.append("images", image));
 
           const res = await fetch(`${API_BASE}/product/addImages/${productId}`, {
             method: "POST",
             credentials: "include",
+            headers: {
+              "Authorization": `Bearer ${token}`, // ✅ Add token
+            },
             body: formData,
           });
 

@@ -18,10 +18,63 @@ export const useUserStore = create(
       shippingAddresses: [],
       selectedShippingAddressId: null,
       selectedAddress: null,
+      
+      // ✅ ADD: Dashboard state
+      dashboardStats: {
+        totalProducts: 0,
+        totalOrders: 0,
+        totalCustomers: 0,
+        recentOrders: []
+      },
 
       setSelectedAddress: (address) => set({ selectedAddress: address }),
       selectShippingAddress: (id) => set({ selectedShippingAddressId: id }),
       setShippingAddresses: (addresses) => set({ shippingAddresses: addresses }),
+
+      // ✅ ADD: Fetch dashboard summary function
+      fetchDashboardSummary: async () => {
+        const { token, isAuthenticated } = get();
+        
+        if (!isAuthenticated || !token) {
+          console.warn("User not authenticated");
+          return;
+        }
+
+        set({ loading: true, error: null });
+
+        try {
+          const res = await fetch(`${API_BASE}dash/dashboard`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            credentials: "include",
+          });
+
+          if (!res.ok) {
+            throw new Error("Failed to fetch dashboard data");
+          }
+
+          const data = await res.json();
+          
+          set({
+            dashboardStats: {
+              totalProducts: data.totalProducts || 0,
+              totalOrders: data.totalOrders || 0,
+              totalCustomers: data.totalCustomers || 0,
+              recentOrders: data.recentOrders || []
+            },
+            loading: false
+          });
+        } catch (err) {
+          console.error("Error fetching dashboard summary:", err);
+          set({ 
+            error: err.message,
+            loading: false 
+          });
+        }
+      },
 
       requestOtp: async (email) => {
         set({ loading: true, error: null });
@@ -98,6 +151,12 @@ export const useUserStore = create(
             selectedShippingAddressId: null,
             orders: [],
             customers: [],
+            dashboardStats: {
+              totalProducts: 0,
+              totalOrders: 0,
+              totalCustomers: 0,
+              recentOrders: []
+            },
           });
         } catch {}
       },
@@ -105,7 +164,6 @@ export const useUserStore = create(
       saveAddress: async (address) => {
         const { token, isAuthenticated } = get();
         
-        // Check authentication
         if (!isAuthenticated || !token) {
           throw new Error("Please login to save address");
         }
@@ -145,7 +203,6 @@ export const useUserStore = create(
       getAddresses: async () => {
         const { token, isAuthenticated } = get();
         
-        // ✅ FIX: Check authentication before making request
         if (!isAuthenticated || !token) {
           set({ addresses: [], shippingAddresses: [] });
           return [];
@@ -162,7 +219,6 @@ export const useUserStore = create(
             credentials: "include",
           });
 
-          // ✅ FIX: Handle 401 gracefully
           if (res.status === 401) {
             set({ 
               addresses: [], 
@@ -334,12 +390,11 @@ export const useUserStore = create(
         }
 
         try {
-          // Create Razorpay order
           const order = await createRazorpayOrder(amount);
           
           return new Promise((resolve, reject) => {
             const options = {
-              key: "YOUR_RAZORPAY_KEY_ID", // Replace with your actual key
+              key: "YOUR_RAZORPAY_KEY_ID",
               amount: order.amount,
               currency: order.currency,
               name: "DRIP NATION",
@@ -347,7 +402,6 @@ export const useUserStore = create(
               order_id: order.id,
               handler: async function (response) {
                 try {
-                  // Verify payment on backend
                   const verifyRes = await fetch(`${API_BASE}payment/verify`, {
                     method: "POST",
                     headers: {
