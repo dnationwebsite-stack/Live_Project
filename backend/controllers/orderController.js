@@ -116,7 +116,6 @@ const placeCODOrder = async (req, res) => {
 
     await newOrder.save();
 
-    // Step 5: Clear cart and pending order
     cart.products = [];
     cart.totalPrice = 0;
     await cart.save();

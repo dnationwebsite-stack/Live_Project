@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Download, Search, ChevronDown } from "lucide-react";
-import { useUserStore } from "../../store/UserSlice";
+import { useOrderStore } from "../../store/OrderSlice"; // Update this import path
 import OrderDetailsModal from "./orderDetailsModal";
 
 export default function OrderManagement() {
@@ -9,7 +9,9 @@ export default function OrderManagement() {
     fetchAllOrders,
     loading,
     handleStatusChange,
-  } = useUserStore();
+    error,
+    clearError,
+  } = useOrderStore();
 
   const [openDropdown, setOpenDropdown] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -18,6 +20,16 @@ export default function OrderManagement() {
   useEffect(() => {
     fetchAllOrders();
   }, [fetchAllOrders]);
+
+  // Clear error after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        clearError();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, clearError]);
 
   const filteredOrders = orders.filter(
     (o) =>
@@ -35,15 +47,12 @@ export default function OrderManagement() {
   };
 
   const generateInvoiceTXT = (order) => {
-    // Create text invoice content
     let invoiceText = "";
     
-    // Header
     invoiceText += "=".repeat(80) + "\n";
     invoiceText += " ".repeat(32) + "INVOICE\n";
     invoiceText += "=".repeat(80) + "\n\n";
     
-    // Invoice Details (Right aligned)
     invoiceText += `Order ID: ${order.customOrderId || order._id}\n`;
     invoiceText += `Date: ${new Date(order.createdAt).toLocaleDateString('en-IN', { 
       year: 'numeric', 
@@ -55,7 +64,6 @@ export default function OrderManagement() {
     
     invoiceText += "-".repeat(80) + "\n\n";
     
-    // Bill To Section
     invoiceText += "BILL TO:\n";
     invoiceText += `${order.shippingAddress?.fullName || "N/A"}\n`;
     invoiceText += `${order.shippingAddress?.line1 || "N/A"}\n`;
@@ -69,7 +77,6 @@ export default function OrderManagement() {
     
     invoiceText += "\n" + "-".repeat(80) + "\n\n";
     
-    // Items Table Header
     invoiceText += "ITEMS:\n\n";
     invoiceText += String("Item").padEnd(40) + 
                    String("Qty").padStart(8) + 
@@ -77,7 +84,6 @@ export default function OrderManagement() {
                    String("Total").padStart(17) + "\n";
     invoiceText += "-".repeat(80) + "\n";
     
-    // Items
     order.items?.forEach((item) => {
       const itemName = (item.name || "N/A").substring(0, 38);
       const qty = (item.quantity || 0).toString();
@@ -92,7 +98,6 @@ export default function OrderManagement() {
     
     invoiceText += "-".repeat(80) + "\n\n";
     
-    // Totals Section
     const subtotal = order.totalPrice || 0;
     const delivery = 15;
     const shipping = 50;
@@ -106,12 +111,10 @@ export default function OrderManagement() {
     
     invoiceText += "=".repeat(80) + "\n\n";
     
-    // Footer
     invoiceText += " ".repeat(22) + "Thank you for your purchase!\n";
     invoiceText += " ".repeat(10) + "This is a computer-generated invoice and does not require a signature.\n";
     invoiceText += "\n" + "=".repeat(80) + "\n";
     
-    // Create and download the text file
     const blob = new Blob([invoiceText], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -127,7 +130,15 @@ export default function OrderManagement() {
     <div className="p-6 max-w-6xl mx-auto">
       <h2 className="text-3xl font-bold mb-6">🛍️ Orders Management</h2>
 
-      {/* 🔍 Search Bar */}
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+          <p className="font-semibold">Error:</p>
+          <p>{error}</p>
+        </div>
+      )}
+
+      {/* Search Bar */}
       <div className="mb-6 flex items-center bg-gray-100 px-4 py-2 rounded-lg shadow-sm">
         <Search className="text-gray-500 mr-2" />
         <input
@@ -139,11 +150,13 @@ export default function OrderManagement() {
         />
       </div>
 
-      {/* 📦 Orders List */}
+      {/* Orders List */}
       {loading ? (
-        <p>Loading orders...</p>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
       ) : filteredOrders.length === 0 ? (
-        <p className="text-gray-500">No orders found.</p>
+        <p className="text-gray-500 text-center py-8">No orders found.</p>
       ) : (
         <div className="grid gap-6">
           {filteredOrders.map((order) => (
@@ -187,7 +200,7 @@ export default function OrderManagement() {
               </div>
 
               <div className="flex justify-between items-center mt-4">
-                {/* 🔄 Status Dropdown */}
+                {/* Status Dropdown */}
                 <div className="relative">
                   <button
                     onClick={() =>
@@ -228,7 +241,7 @@ export default function OrderManagement() {
                   )}
                 </div>
 
-                {/* 🔘 Action Buttons */}
+                {/* Action Buttons */}
                 <div className="flex gap-3">
                   <button
                     onClick={() => setSelectedOrder(order)}
@@ -250,7 +263,7 @@ export default function OrderManagement() {
         </div>
       )}
 
-      {/* 🧾 Order Details Modal */}
+      {/* Order Details Modal */}
       {selectedOrder && (
         <OrderDetailsModal
           order={selectedOrder}
