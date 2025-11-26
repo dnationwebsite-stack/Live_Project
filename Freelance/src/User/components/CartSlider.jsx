@@ -12,20 +12,12 @@ import cat1 from "../../assets/catsL1.jpg";
 import cat2 from "../../assets/catsL2.jpg";
 import cat3 from "../../assets/catsL3.jpg";
 import cat4 from "../../assets/catsL4.jpg";
-import cat5 from "../../assets/catsL5.jpg";
-import cat6 from "../../assets/catsL6.jpg";
-import cat7 from "../../assets/catsL7.jpg";
-import cat8 from "../../assets/catsL8.jpg";
 
 const categories = [
   { name: "Men", image: cat1 },
   { name: "Women", image: cat2 },
   { name: "Kids", image: cat3 },
   { name: "Accessories", image: cat4 },
-  { name: "Footwear", image: cat5 },
-  { name: "Winter Wear", image: cat6 },
-  { name: "Beauty", image: cat7 },
-  { name: "Sports", image: cat8 },
 ];
 
 const HomeCatSlider = () => {
@@ -54,18 +46,18 @@ const HomeCatSlider = () => {
       </h2>
 
       <div className="relative flex items-center">
-        {!isBeginning && (
+        {/* {!isBeginning && (
           <button
             className="absolute left-0 z-10 bg-[#ff5252] text-white cursor-pointer p-2 rounded-full shadow-md"
             onClick={() => swiperRef.current.swiper.slidePrev()}
           >
             <FaChevronLeft />
           </button>
-        )}
+        )} */}
 
         <Swiper
           ref={swiperRef}
-          slidesPerView={6}
+          slidesPerView={4}
           spaceBetween={20}
           freeMode={true}
           modules={[FreeMode, Pagination]}
@@ -98,14 +90,14 @@ const HomeCatSlider = () => {
           ))}
         </Swiper>
 
-        {!isEnd && (
+        {/* {!isEnd && (
           <button
             className="absolute right-0 z-10 bg-[#ff5252] text-white cursor-pointer p-2 rounded-full shadow-md"
             onClick={() => swiperRef.current.swiper.slideNext()}
           >
             <FaChevronRight />
           </button>
-        )}
+        )} */}
       </div>
     </div>
   );
