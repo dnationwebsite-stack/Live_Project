@@ -1,17 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Download, Search, ChevronDown } from "lucide-react";
-import { useOrderStore } from "../../store/OrderSlice"; // Update this import path
+import { useUserStore } from "../../store/UserSlice"; // Update this import path
 import OrderDetailsModal from "./orderDetailsModal";
 
 export default function OrderManagement() {
   const {
-    orders,
-    fetchAllOrders,
-    loading,
-    handleStatusChange,
-    error,
-    clearError,
-  } = useOrderStore();
+     orders,
+       fetchAllOrders,
+       loading,
+       handleStatusChange,
+     } = useUserStore();
 
   const [openDropdown, setOpenDropdown] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -20,16 +18,6 @@ export default function OrderManagement() {
   useEffect(() => {
     fetchAllOrders();
   }, [fetchAllOrders]);
-
-  // Clear error after 5 seconds
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        clearError();
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [error, clearError]);
 
   const filteredOrders = orders.filter(
     (o) =>
@@ -129,14 +117,6 @@ export default function OrderManagement() {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <h2 className="text-3xl font-bold mb-6">🛍️ Orders Management</h2>
-
-      {/* Error Message */}
-      {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          <p className="font-semibold">Error:</p>
-          <p>{error}</p>
-        </div>
-      )}
 
       {/* Search Bar */}
       <div className="mb-6 flex items-center bg-gray-100 px-4 py-2 rounded-lg shadow-sm">

@@ -1,31 +1,49 @@
-import { FaPhoneAlt, FaWhatsapp, FaEnvelope, FaMapMarkerAlt, FaHome, FaYoutube, FaFacebookF, FaInstagram } from "react-icons/fa";
+import {
+  FaPhoneAlt,
+  FaWhatsapp,
+  FaEnvelope,
+  FaMapMarkerAlt,
+  FaYoutube,
+  FaFacebookF,
+  FaInstagram,
+} from "react-icons/fa";
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-100 px-12 py-16 flex flex-col">
-      <div className="grid grid-cols-4 gap-24 mb-12">
+    <footer className="bg-gray-100 px-6 md:px-12 py-16">
+      
+      {/* GRID — Responsive */}
+      <div
+        className="
+        grid 
+        grid-cols-1 
+        sm:grid-cols-2 
+        lg:grid-cols-4 
+        gap-12 
+        md:gap-20 
+        mb-12
+      "
+      >
         {/* Quick Links */}
         <div>
-          <h3 className="text-lg font-bold text-gray-900 mb-6">Quick Links</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-5">Quick Links</h3>
           <nav className="space-y-3">
             {[
-              "Home",
-              "My Account",
-              "My Orders",
-              "About Us",
-              "Payment Policy",
-              "Privacy Policy",
-              "Return & Refund Policy",
-              "Shipping Policy",
-              "Terms & Conditions",
-              "Contact Us",
+              { name: "Home", path: "/" },
+              { name: "My Account", path: "/profile" },
+              { name: "My Orders", path: "/orders" },
+              { name: "Payment Policy", path: "/payment-policy" },
+              { name: "Privacy Policy", path: "/privacy-policy" },
+              { name: "Shipping Policy", path: "/shipping-policy" },
+              { name: "Terms & Conditions", path: "/terms-conditions" },
+              { name: "Contact Us", path: "/contact" },
             ].map((item, idx) => (
               <a
                 key={idx}
-                href="#"
+                href={item.path}
                 className="block text-gray-700 hover:text-gray-900 transition"
               >
-                {item}
+                {item.name}
               </a>
             ))}
           </nav>
@@ -33,25 +51,25 @@ export default function Footer() {
 
         {/* Get In Touch */}
         <div>
-          <h3 className="text-lg font-bold text-gray-900 mb-6">Get In Touch</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-5">Get In Touch</h3>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <FaPhoneAlt className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <FaPhoneAlt className="w-5 h-5 text-green-600 mt-0.5" />
               <span className="text-gray-700">8777578177</span>
             </div>
             <div className="flex items-start gap-3">
-              <FaWhatsapp className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+              <FaWhatsapp className="w-5 h-5 text-green-500 mt-0.5" />
               <span className="text-gray-700">8777578177</span>
             </div>
             <div className="flex items-start gap-3">
-              <FaEnvelope className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <FaEnvelope className="w-5 h-5 text-green-600 mt-0.5" />
               <span className="text-gray-700">jbsports835@gmail.com</span>
             </div>
             <div className="flex items-start gap-3">
-              <FaMapMarkerAlt className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <FaMapMarkerAlt className="w-5 h-5 text-green-600 mt-0.5" />
               <div className="text-gray-700">
-                <div>380 Jessore road, Madhyamgram</div>
-                <div>Kolkata, West Bengal - 700129</div>
+                <p>380 Jessore road, Madhyamgram</p>
+                <p>Kolkata, West Bengal - 700129</p>
               </div>
             </div>
           </div>
@@ -59,18 +77,28 @@ export default function Footer() {
 
         {/* We Accept */}
         <div>
-          <h3 className="text-lg font-bold text-gray-900 mb-6">We Accept</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-5">We Accept</h3>
           <div className="flex flex-wrap gap-3">
-            <div className="bg-white border border-gray-300 rounded px-3 py-2 flex items-center justify-center">
-              <span className="text-blue-600 font-bold text-sm">VISA</span>
-            </div>
-            <div className="bg-white border border-gray-300 rounded px-3 py-2 flex items-center justify-center">
-              <span className="text-red-600 font-bold text-sm">MASTERCARD</span>
-            </div>
-            <div className="bg-white border border-gray-300 rounded px-3 py-2 flex items-center justify-center">
-              <span className="text-purple-600 font-bold text-xs">UPI</span>
-            </div>
-            <div className="bg-white border border-gray-300 rounded px-3 py-2 flex items-center justify-center">
+            {[
+              { label: "VISA", class: "text-blue-600 font-bold text-sm" },
+              { label: "MASTERCARD", class: "text-red-600 font-bold text-sm" },
+              { label: "UPI", class: "text-purple-600 font-bold text-xs" },
+            ].map((item, idx) => (
+              <div
+                key={idx}
+                className="
+                bg-white 
+                border border-gray-300 
+                rounded 
+                px-3 py-2 
+                flex items-center justify-center
+              "
+              >
+                <span className={item.class}>{item.label}</span>
+              </div>
+            ))}
+
+            <div className="bg-white border border-gray-300 rounded px-3 py-2">
               <span className="text-yellow-700 text-lg">💳</span>
             </div>
           </div>
@@ -78,21 +106,21 @@ export default function Footer() {
 
         {/* Social */}
         <div>
-          <h3 className="text-lg font-bold text-gray-900 mb-6">Social</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-5">Social</h3>
           <div className="space-y-3">
-            <a href="#" className="flex items-center gap-3 text-gray-700 hover:text-gray-900 transition">
+            <a className="flex items-center gap-3 text-gray-700 hover:text-gray-900 transition">
               <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
                 <FaYoutube className="text-white text-sm" />
               </div>
               <span>Youtube</span>
             </a>
-            <a href="#" className="flex items-center gap-3 text-gray-700 hover:text-gray-900 transition">
+            <a className="flex items-center gap-3 text-gray-700 hover:text-gray-900 transition">
               <div className="w-8 h-8 bg-blue-700 rounded-full flex items-center justify-center">
                 <FaFacebookF className="text-white text-sm" />
               </div>
               <span>Facebook</span>
             </a>
-            <a href="#" className="flex items-center gap-3 text-gray-700 hover:text-gray-900 transition">
+            <a className="flex items-center gap-3 text-gray-700 hover:text-gray-900 transition">
               <div className="w-8 h-8 bg-pink-600 rounded-full flex items-center justify-center">
                 <FaInstagram className="text-white text-sm" />
               </div>
@@ -103,7 +131,7 @@ export default function Footer() {
       </div>
 
       {/* Bottom Section */}
-      <div className="flex flex-col items-center gap-6 pt-8 border-t border-gray-300">
+      <div className="pt-8 border-t border-gray-300 flex flex-col items-center text-center">
         <p className="text-gray-400 text-sm">
           Copyright © by Boot Store 2025. All rights reserved.
         </p>

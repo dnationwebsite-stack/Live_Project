@@ -9,7 +9,11 @@ import Footer from "./User/components/Footer"
 import ProfilePage from "./User/pages/ProfilePage"
 import OrderPage from "./User/pages/OrderPage"
 import AdminPanel from "./Admin/pages/adminpanel"
-import { useUserStore } from "./store/UserSlice" // Import your user store
+import { useUserStore } from "./store/UserSlice"
+import Contact from "./User/quickLinks/Contact"
+import PaymentPolicy from "./User/quickLinks/PaymentPolicy"
+import PrivacyPolicy from "./User/quickLinks/PrivacyPolicy"
+import TermsConditions from "./User/quickLinks/TermsCondition"
 
 // Protected Route Component for Admin
 const ProtectedAdminRoute = ({ children }) => {
@@ -54,6 +58,11 @@ function App() {
         <Route path="/cartpage" element={<CartList />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/orders" element={<OrderPage />} />
+        <Route path="/contact" element={<Contact/>} />
+        <Route path="/payment-policy" element={<PaymentPolicy />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-conditions" element={<TermsConditions />} />
+        <Route path="/shipping-policy" element={<TermsConditions />} />
         <Route path="/detailpage/:id" element={<ProductDetailPage />} />
         
         {/* Catch-all route for 404 */}
