@@ -91,7 +91,6 @@ export default function ProductCard({ product }) {
         <h3 className="text-sm font-medium text-gray-900 line-clamp-2 leading-tight">
           {product.name}
         </h3>
-        <p className="text-xs text-gray-500">{product.brand}</p>
         <span className="text-lg font-bold text-gray-900">₹{product.price}</span>
 
         {/* Status */}

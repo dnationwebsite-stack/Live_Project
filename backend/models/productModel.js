@@ -1,130 +1,128 @@
 const mongoose = require("mongoose");
 
-// Image Schema with metadata
+// Define Image Subdocument Schema
 const imageSchema = new mongoose.Schema({
-  url: { 
-    type: String, 
+  url: {
+    type: String,
+    required: true
+  },
+  publicId: {
+    type: String,
+    default: ""
+  },
+  alt: {
+    type: String,
+    default: "Product Image"
+  },
+  isPrimary: {
+    type: Boolean,
+    default: false
+  },
+  order: {
+    type: Number,
+    default: 0
+  }
+}, { _id: true }); // ✅ Ensure _id is generated for subdocuments
+
+// Define Size Subdocument Schema
+const sizeSchema = new mongoose.Schema({
+  size: {
+    type: String,
     required: true,
-    trim: true 
+    trim: true
   },
-  publicId: { 
-    type: String, // for Cloudinary or other cloud storage
-    trim: true 
-  },
-  alt: { 
-    type: String, 
-    default: "Product Image" 
-  },
-  isPrimary: { 
-    type: Boolean, 
-    default: false 
-  },
-  order: { 
-    type: Number, 
-    default: 0 
+  stock: {
+    type: Number,
+    required: true,
+    default: 0,
+    min: 0
   }
 }, { _id: true });
 
-// Size Schema
-const sizeSchema = new mongoose.Schema({
-  size: { type: String, required: true },
-  stock: { type: Number, default: 0 },
-});
-
 // Main Product Schema
-const productSchema = new mongoose.Schema(
-  {
-    name: { 
-      type: String, 
-      required: true,
-      trim: true 
-    },
-    brand: { 
-      type: String, 
-      required: true,
-      trim: true 
-    },
-    price: { 
-      type: Number, 
-      required: true,
-      min: 0 
-    },
-    category: { 
-      type: String, 
-      enum: ["jersey", "boots"], 
-      required: true 
-    },
-    subcategory: { 
-      type: String, 
-      required: true 
-    },
-    sizes: { 
-      type: [sizeSchema], 
-      default: [] 
-    },
-    images: {
-      type: [imageSchema],
-      validate: {
-        validator: function(images) {
-          return images.length > 0 && images.length <= 10;
-        },
-        message: "Product must have between 1 and 10 images"
-      },
-      default: [{
-        url: "https://via.placeholder.com/400x400?text=No+Image",
-        alt: "Default Product Image",
-        isPrimary: true,
-        order: 0
-      }]
-    },
-    status: {
-      type: String,
-      enum: ["Active", "Limited", "Out of Stock"],
-      default: "Active",
-    },
-    description: { type: String },
+const productSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, "Product name is required"],
+    trim: true,
+    maxlength: [200, "Product name cannot exceed 200 characters"]
   },
-  { 
-    timestamps: true 
+  brand: {
+    type: String,
+    required: [true, "Brand is required"],
+    trim: true
+  },
+  price: {
+    type: Number,
+    required: [true, "Price is required"],
+    min: [0, "Price cannot be negative"]
+  },
+  category: {
+    type: String,
+    required: [true, "Category is required"],
+    trim: true,
+    lowercase: true
+  },
+  subcategory: {
+    type: String,
+    required: [true, "Subcategory is required"],
+    trim: true
+  },
+  description: {
+    type: String,
+    required: [true, "Description is required"],
+    trim: true
+  },
+  status: {
+    type: String,
+    enum: ["Active", "Limited", "Out of Stock"],
+    default: "Active"
+  },
+  images: {
+    type: [imageSchema], // ✅ Use the imageSchema
+    validate: {
+      validator: function(images) {
+        return images.length <= 10;
+      },
+      message: "Maximum 10 images allowed"
+    },
+    default: []
+  },
+  sizes: {
+    type: [sizeSchema], // ✅ Use the sizeSchema
+    required: [true, "At least one size is required"],
+    validate: {
+      validator: function(sizes) {
+        return sizes.length > 0;
+      },
+      message: "Product must have at least one size"
+    }
   }
-);
-
-// Virtual to get primary image - WITH SAFETY CHECK
-productSchema.virtual('primaryImage').get(function() {
-  // Safety check: ensure images array exists and has items
-  if (!this.images || !Array.isArray(this.images) || this.images.length === 0) {
-    return {
-      url: "https://via.placeholder.com/400x400?text=No+Image",
-      alt: "Default Product Image",
-      isPrimary: true,
-      order: 0
-    };
-  }
-  
-  const primary = this.images.find(img => img.isPrimary);
-  return primary || this.images[0];
+}, {
+  timestamps: true, // ✅ Adds createdAt and updatedAt
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Method to set primary image
-productSchema.methods.setPrimaryImage = function(imageId) {
-  this.images.forEach(img => {
-    img.isPrimary = img._id.toString() === imageId.toString();
-  });
-  return this.save();
-};
+// ✅ Indexes for better query performance
+productSchema.index({ category: 1, subcategory: 1 });
+productSchema.index({ status: 1 });
+productSchema.index({ name: "text", description: "text" });
 
-// Method to reorder images
-productSchema.methods.reorderImages = function(imageOrder) {
-  imageOrder.forEach((id, index) => {
-    const img = this.images.id(id);
-    if (img) img.order = index;
-  });
-  this.images.sort((a, b) => a.order - b.order);
-  return this.save();
-};
+// ✅ Virtual for total stock
+productSchema.virtual("totalStock").get(function() {
+  return this.sizes.reduce((total, size) => total + size.stock, 0);
+});
 
-// Ensure virtuals are included in JSON
-productSchema.set('toJSON', { virtuals: true });
-productSchema.set('toObject', { virtuals: true });
+// ✅ Pre-save hook to ensure at least one primary image
+productSchema.pre("save", function(next) {
+  if (this.images.length > 0) {
+    const hasPrimary = this.images.some(img => img.isPrimary);
+    if (!hasPrimary) {
+      this.images[0].isPrimary = true;
+    }
+  }
+  next();
+});
 
 module.exports = mongoose.model("Product", productSchema);

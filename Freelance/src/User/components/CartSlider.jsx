@@ -40,7 +40,7 @@ const HomeCatSlider = () => {
   return (
     <div className="w-full px-5 mt-10 relative">
       <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6 text-center">
-        Categories
+        Categoriess
       </h2>
 
       <div className="relative flex items-center">

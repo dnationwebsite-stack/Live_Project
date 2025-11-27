@@ -54,6 +54,7 @@ export default function ProductManagement() {
   });
 
   useEffect(() => {
+    console.log("Products loaded:", products.length);
     fetchProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

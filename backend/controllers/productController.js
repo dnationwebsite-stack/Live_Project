@@ -74,30 +74,41 @@ exports.createProduct = async (req, res) => {
 // ============================================
 exports.getAllProducts = async (req, res) => {
   try {
-    const { category, subcategory, status, page = 1, limit = 10 } = req.query;
-    
+    const { category, subcategory, status } = req.query;
+
     const filter = {};
-    if (category) filter.category = category;
+    if (category) filter.category = category.toLowerCase();
     if (subcategory) filter.subcategory = subcategory;
     if (status) filter.status = status;
 
+    // ✅ Use .lean() for faster queries and ensure all fields are returned
     const products = await Product.find(filter)
+      .select("+images +sizes") // ✅ Explicitly include subdocument arrays
       .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+       .limit(10000) 
+      .lean(); // ✅ Returns plain JavaScript objects
 
     const total = await Product.countDocuments(filter);
+
+    // ✅ Log to verify data structure
+    console.log("📦 Fetched Products Count:", products.length);
+    if (products.length > 0) {
+      console.log("📦 Sample Product:", {
+        _id: products[0]._id,
+        name: products[0].name,
+        imagesCount: products[0].images?.length || 0,
+        sizesCount: products[0].sizes?.length || 0,
+        hasAllFields: !!(products[0].name && products[0].price && products[0].category)
+      });
+    }
 
     res.status(200).json({
       success: true,
       data: products,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / limit),
-        totalProducts: total
-      }
+      totalProducts: total
     });
   } catch (error) {
+    console.error("❌ Get All Products Error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch products",
@@ -105,6 +116,7 @@ exports.getAllProducts = async (req, res) => {
     });
   }
 };
+
 
 // ============================================
 // GET SINGLE PRODUCT

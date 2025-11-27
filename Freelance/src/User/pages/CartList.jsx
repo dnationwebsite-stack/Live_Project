@@ -34,11 +34,11 @@ export default function ProductsPage() {
   }, [fetchProducts])
 
   const categories = useMemo(() => ["All", ...Array.from(new Set(products.map(p => p.category))).filter(Boolean)], [products])
-  const brands = useMemo(() => ["All", ...Array.from(new Set(products.map(p => p.brand))).filter(Boolean)], [products])
+  const subcategories = useMemo(() => ["All", ...Array.from(new Set(products.map(p => p.subcategory))).filter(Boolean)], [products])
 
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
-  const [selectedBrand, setSelectedBrand] = useState("All")
+  const [selectedSubcategory, setSelectedSubcategory] = useState("All")
   const [priceRange, setPriceRange] = useState([0, 50000])
   const [showInStockOnly, setShowInStockOnly] = useState(false)
   const [sortBy, setSortBy] = useState("featured")
@@ -50,11 +50,11 @@ export default function ProductsPage() {
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
       const matchesCategory = selectedCategory === "All" || product.category === selectedCategory
-      const matchesBrand = selectedBrand === "All" || product.brand === selectedBrand
+      const matchesSubcategory = selectedSubcategory === "All" || product.subcategory === selectedSubcategory
       const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1]
       const matchesStock = !showInStockOnly || product.inStock
 
-      return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesStock
+      return matchesSearch && matchesCategory && matchesSubcategory && matchesPrice && matchesStock
     })
 
     switch (sortBy) {
@@ -75,12 +75,12 @@ export default function ProductsPage() {
     }
 
     return filtered
-  }, [searchQuery, selectedCategory, selectedBrand, priceRange, showInStockOnly, sortBy, products])
+  }, [searchQuery, selectedCategory, selectedSubcategory, priceRange, showInStockOnly, sortBy, products])
 
   const resetFilters = () => {
     setSearchQuery("")
     setSelectedCategory("All")
-    setSelectedBrand("All")
+    setSelectedSubcategory("All")
     setPriceRange([0, 50000])
     setShowInStockOnly(false)
     setSortBy("featured")
@@ -128,7 +128,7 @@ export default function ProductsPage() {
             <CardContent className="!space-y-6">
 
               {/* Category */}
-              <FormControl fullWidth size="small">
+              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
                 <InputLabel>Category</InputLabel>
                 <Select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}>
                   {categories.map(category => (
@@ -139,13 +139,13 @@ export default function ProductsPage() {
                 </Select>
               </FormControl>
 
-              {/* Brand */}
-              <FormControl fullWidth size="small">
-                <InputLabel>Brand</InputLabel>
-                <Select value={selectedBrand} onChange={e => setSelectedBrand(e.target.value)}>
-                  {brands.map(brand => (
-                    <MenuItem key={brand} value={brand}>
-                      {brand}
+              {/* Subcategory */}
+              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                <InputLabel>Subcategory</InputLabel>
+                <Select value={selectedSubcategory} onChange={e => setSelectedSubcategory(e.target.value)}>
+                  {subcategories.map(subcategory => (
+                    <MenuItem key={subcategory} value={subcategory}>
+                      {subcategory}
                     </MenuItem>
                   ))}
                 </Select>

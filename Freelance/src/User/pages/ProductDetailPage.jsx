@@ -140,9 +140,6 @@ export default function ProductDetailPage() {
 
           <div className="text-gray-500 text-sm space-y-1">
             <p>
-              <span className="font-medium text-gray-700">Brand:</span> {product.brand}
-            </p>
-            <p>
               <span className="font-medium text-gray-700">Category:</span> {product.category} → {product.subcategory}
             </p>
           </div>
