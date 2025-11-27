@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { useNavigate } from "react-router-dom"; // ✅ import navigate
+import { useNavigate } from "react-router-dom";
 
 import "swiper/css";
 import "swiper/css/free-mode";
@@ -24,7 +24,7 @@ const HomeCatSlider = () => {
   const swiperRef = useRef(null);
   const [isBeginning, setIsBeginning] = useState(true);
   const [isEnd, setIsEnd] = useState(false);
-  const navigate = useNavigate(); // ✅ navigation hook
+  const navigate = useNavigate();
 
   const handleSlideChange = () => {
     if (swiperRef.current) {
@@ -33,32 +33,30 @@ const HomeCatSlider = () => {
     }
   };
 
-  // ✅ function to navigate
   const handleCategoryClick = (category) => {
-    navigate("/cartPage", { state: { category } }); // optional: pass data to next page
+    navigate("/cartPage", { state: { category } });
   };
 
   return (
     <div className="w-full px-5 mt-10 relative">
-      {/* 👇 Heading */}
-      <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">
+      <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6 text-center">
         Categories
       </h2>
 
       <div className="relative flex items-center">
-        {/* {!isBeginning && (
+        {/* LEFT ARROW (Responsive Size) */}
+        {!isBeginning && (
           <button
-            className="absolute left-0 z-10 bg-[#ff5252] text-white cursor-pointer p-2 rounded-full shadow-md"
+            className="absolute left-0 z-10 bg-[#ff5252] text-white cursor-pointer 
+                       p-2 md:p-3 rounded-full shadow-md"
             onClick={() => swiperRef.current.swiper.slidePrev()}
           >
-            <FaChevronLeft />
+            <FaChevronLeft size={16} className="md:size-20" />
           </button>
-        )} */}
+        )}
 
         <Swiper
           ref={swiperRef}
-          slidesPerView={4}
-          spaceBetween={20}
           freeMode={true}
           modules={[FreeMode, Pagination]}
           onSlideChange={handleSlideChange}
@@ -67,22 +65,38 @@ const HomeCatSlider = () => {
             setIsBeginning(swiper.isBeginning);
             setIsEnd(swiper.isEnd);
           }}
+          spaceBetween={20}
+          breakpoints={{
+            0: { slidesPerView: 2 },     // 📱 Mobile
+            480: { slidesPerView: 2 },
+            640: { slidesPerView: 3 },   // Tablet
+            768: { slidesPerView: 4 },
+            1024: { slidesPerView: 4},  // Laptop
+            1280: { slidesPerView: 4 },  // Desktop Large
+          }}
         >
           {categories.map((category, index) => (
             <SwiperSlide key={index} className="py-2">
               <div
                 className="flex flex-col items-center cursor-pointer"
-                onClick={() => handleCategoryClick(category.name)} // 👈 click handler
+                onClick={() => handleCategoryClick(category.name)}
               >
-                {/* 👇 Circular image centered with absolute + transform */}
-                <div className="relative w-48 h-48 rounded-full border border-gray-200 hover:shadow-lg transition-all duration-300 hover:scale-105 overflow-hidden">
+                <div className="relative 
+                                w-32 h-32 
+                                sm:w-36 sm:h-36 
+                                md:w-44 md:h-44 
+                                lg:w-48 lg:h-48 
+                                rounded-full border border-gray-200 
+                                hover:shadow-lg transition-all duration-300 
+                                hover:scale-105 overflow-hidden">
                   <img
                     src={category.image}
                     alt={category.name}
-                    className="absolute top-3/5 left-1/2 w-full h-full object-cover rounded-full transform -translate-x-1/2 -translate-y-1/2"
+                    className="absolute top-1/2 left-1/2 w-full h-full object-cover rounded-full 
+                              transform -translate-x-1/2 -translate-y-1/2"
                   />
                 </div>
-                <p className="font-medium mt-3 text-gray-800">
+                <p className="font-medium mt-3 text-gray-800 text-sm md:text-base lg:text-lg">
                   {category.name}
                 </p>
               </div>
@@ -90,14 +104,16 @@ const HomeCatSlider = () => {
           ))}
         </Swiper>
 
-        {/* {!isEnd && (
+        {/* RIGHT ARROW (Responsive Size) */}
+        {!isEnd && (
           <button
-            className="absolute right-0 z-10 bg-[#ff5252] text-white cursor-pointer p-2 rounded-full shadow-md"
+            className="absolute right-0 z-10 bg-[#ff5252] text-white cursor-pointer 
+                       p-2 md:p-3 rounded-full shadow-md"
             onClick={() => swiperRef.current.swiper.slideNext()}
           >
-            <FaChevronRight />
+            <FaChevronRight size={16} className="md:size-20" />
           </button>
-        )} */}
+        )}
       </div>
     </div>
   );

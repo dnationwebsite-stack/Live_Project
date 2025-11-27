@@ -33,7 +33,6 @@ export default function ProductsPage() {
     fetchProducts()
   }, [fetchProducts])
 
-  // ✅ Dynamic categories & brands from products
   const categories = useMemo(() => ["All", ...Array.from(new Set(products.map(p => p.category))).filter(Boolean)], [products])
   const brands = useMemo(() => ["All", ...Array.from(new Set(products.map(p => p.brand))).filter(Boolean)], [products])
 
@@ -43,7 +42,7 @@ export default function ProductsPage() {
   const [priceRange, setPriceRange] = useState([0, 50000])
   const [showInStockOnly, setShowInStockOnly] = useState(false)
   const [sortBy, setSortBy] = useState("featured")
-  const [showFilters, setShowFilters] = useState(true)
+  const [showFilters, setShowFilters] = useState(false) // 🔥 mobile default: false
 
   const filteredAndSortedProducts = useMemo(() => {
     const filtered = products.filter(product => {
@@ -91,19 +90,43 @@ export default function ProductsPage() {
     <div className="min-h-screen mt-18">
       {/* Header */}
       <header className="border-b border-border bg-card">
-        <div className="w-full px-26 py-4 flex items-center justify-between ">
+        <div className="w-full px-5 py-4 flex items-center justify-between ">
           <Typography variant="h5" className="text-foreground font-bold">
             Products
           </Typography>
+
+          {/* 🔥 MOBILE FILTER BUTTON */}
+          <Button className="lg:hidden" variant="outlined" onClick={() => setShowFilters(true)}>
+            Filters
+          </Button>
         </div>
       </header>
 
       <div className="w-[90%] mx-auto px-4 py-6 flex gap-6">
-        {/* Filters Sidebar */}
-        <aside className={`w-80 ${showFilters ? "block" : "hidden lg:block"} h-[80vh] overflow-y-auto sticky top-0`}>
-          <Card className="bg-sidebar border-sidebar-border">
+        {/* FILTER SIDEBAR (Desktop normal / Mobile FULL SCREEN) */}
+        {showFilters && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 z-40 lg:hidden" onClick={() => setShowFilters(false)}></div>
+        )}
+
+        <aside
+          className={`
+            ${showFilters ? "block" : "hidden"}
+            lg:block 
+            bg-white shadow-lg
+            lg:relative lg:w-80
+
+            /* Mobile fullscreen */
+            fixed lg:static
+            top-0 left-0 
+            w-full h-full 
+            z-50 
+            p-4 overflow-y-auto
+          `}
+        >
+          <Card className="bg-sidebar border-sidebar-border h-full overflow-y-auto">
             <CardHeader title="Filters" className="text-sidebar-foreground sticky top-0 bg-sidebar z-10" />
             <CardContent className="!space-y-6">
+
               {/* Category */}
               <FormControl fullWidth size="small">
                 <InputLabel>Category</InputLabel>
@@ -152,35 +175,40 @@ export default function ProductsPage() {
               </div>
             </CardContent>
 
+            {/* Buttons */}
             <CardActions className="flex gap-2 sticky bottom-0 bg-sidebar p-2 z-10">
               <Button onClick={resetFilters} variant="outlined" size="small" className="flex-1 bg-transparent">
                 Reset
               </Button>
-              <Button size="small" className="flex-1">
+
+              {/* 🔥 APPLY FILTERS CLOSES MOBILE SIDEBAR */}
+              <Button
+                size="small"
+                className="flex-1"
+                onClick={() => setShowFilters(false)}
+              >
                 Apply Filters
               </Button>
             </CardActions>
           </Card>
         </aside>
 
-        {/* Main Content */}
+        {/* MAIN CONTENT */}
         <main className="flex-1 h-[120vh] overflow-y-auto">
-          {/* Sort & info sticky */}
           <div className="flex items-center justify-between mb-6 sticky top-0 bg-card z-10 !py-5 !p-2 bg-white">
             <Typography variant="body2" className="text-muted-foreground">
               {filteredAndSortedProducts.length} products found
             </Typography>
-            <div className="flex items-center gap-4">
-              <FormControl size="small">
-                <Select value={sortBy} onChange={e => setSortBy(e.target.value)}>
-                  {sortOptions.map(option => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </div>
+
+            <FormControl size="small">
+              <Select value={sortBy} onChange={e => setSortBy(e.target.value)}>
+                {sortOptions.map(option => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </div>
 
           {filteredAndSortedProducts.length === 0 ? (
@@ -193,7 +221,7 @@ export default function ProductsPage() {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredAndSortedProducts.map(product => (
                 <ProductCard key={product._id || product.id} product={product} />
               ))}
