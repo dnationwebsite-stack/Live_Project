@@ -8,10 +8,10 @@ import "swiper/css/pagination";
 import { FreeMode, Pagination } from "swiper/modules";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
-import cat1 from "../../assets/catsL1.jpg";
-import cat2 from "../../assets/catsL2.jpg";
-import cat3 from "../../assets/catsL3.jpg";
-import cat4 from "../../assets/catsL4.jpg";
+import cat1 from "../../assets/Fan-version.png";
+import cat2 from "../../assets/Player-version.png";
+import cat3 from "../../assets/Retro.jpg";
+import cat4 from "../../assets/Accessories.png";
 
 const categories = [
   { name: "Men", image: cat1 },
@@ -86,19 +86,16 @@ const HomeCatSlider = () => {
                                 sm:w-36 sm:h-36 
                                 md:w-44 md:h-44 
                                 lg:w-48 lg:h-48 
-                                rounded-full border border-gray-200 
+                                 border border-gray-200 
                                 hover:shadow-lg transition-all duration-300 
-                                hover:scale-105 overflow-hidden">
+                                hover:scale-105">
                   <img
                     src={category.image}
-                    alt={category.name}
-                    className="absolute top-1/2 left-1/2 w-full h-full object-cover rounded-full 
+                    className="absolute top-1/2 left-1/2 w-full h-full object-cover  
                               transform -translate-x-1/2 -translate-y-1/2"
                   />
                 </div>
-                <p className="font-medium mt-3 text-gray-800 text-sm md:text-base lg:text-lg">
-                  {category.name}
-                </p>
+                
               </div>
             </SwiperSlide>
           ))}

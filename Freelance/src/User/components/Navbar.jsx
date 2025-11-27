@@ -248,7 +248,7 @@ export default function UrbanMonkeyHeader() {
   };
 
   const handleJoinWhatsApp = () => {
-    const groupLink = "https://chat.whatsapp.com/YourGroupInviteLinkHere";
+    const groupLink = "https://whatsapp.com/channel/0029VaqkkCS5kg73HWffOf1q";
     const userConfirmed = window.confirm(
       "📱 Do you want to open WhatsApp and join our community group?\n\nYou'll need to grant permission to open WhatsApp."
     );
