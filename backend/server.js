@@ -50,6 +50,6 @@ app.use("/api/admin", coustomerRoutes);
 const PORT = process.env.PORT || 5000;
 
 // IMPORTANT: "0.0.0.0" makes the server accessible publicly
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, "::", () => {
     console.log(`🚀 Server running at: http://82.112.231.28:${PORT}`);
 });
