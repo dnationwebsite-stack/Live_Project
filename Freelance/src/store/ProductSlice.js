@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useUserStore } from "./UserSlice";
 
-const API_BASE = "http://82.112.231.28:5000/api";
+const API_BASE = "https://82.112.231.28:5000/api";
 
 const useProductStore = create(
   persist(

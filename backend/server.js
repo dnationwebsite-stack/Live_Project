@@ -20,10 +20,10 @@ connectDB();
 app.use(cors({
     origin: [
         "http://localhost:5173",           // Local development
-        "http://dripnation.co.in",         // Live domain
+        "https://dripnation.co.in",         // Live domain
         "https://dripnation.co.in",        // If you use HTTPS
-        "http://82.112.231.28",            // VPS public IP
-        "http://82.112.231.28:5000"        // Allow IP with port
+        "https://82.112.231.28",            // VPS public IP
+        "https://82.112.231.28:5000"        // Allow IP with port
     ],
     credentials: true
 }));
@@ -51,5 +51,5 @@ const PORT = process.env.PORT || 5000;
 
 // IMPORTANT: "0.0.0.0" makes the server accessible publicly
 app.listen(PORT, "::", () => {
-    console.log(`🚀 Server running at: http://82.112.231.28:${PORT}`);
+    console.log(`🚀 Server running at: https://82.112.231.28:${PORT}`);
 });
