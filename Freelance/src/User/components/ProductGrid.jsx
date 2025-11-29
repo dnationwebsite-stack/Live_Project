@@ -63,7 +63,7 @@ export default function ProductGrid() {
       {/* Bottom Link */}
       <div className="px-4 py-8 text-center">
         <Link to="/cartpage">
-          <h1 className="text-base sm:text-lg md:text-xl font-semibold text-blue-600 hover:underline cursor-pointer">
+          <h1 className="text-base sm:text-lg md:text-xl font-semibold cursor-pointer">
             View Products
           </h1>
         </Link>
