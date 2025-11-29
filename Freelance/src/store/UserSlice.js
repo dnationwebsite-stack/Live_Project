@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 // Correct API Base (no HTTPS unless reverse proxy exists)
-const API_BASE = "http://dripnation.co.in/api/";
+const API_BASE = "https://dripnation.co.in/api/";
 
 export const useUserStore = create(
   persist(

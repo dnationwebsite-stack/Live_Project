@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-const API_BASE_URL = "https://82.112.231.28:5000/api";
+const API_BASE_URL = "https://dripnation.co.in/api";
 
 // Helper function to get token from cookies
 const getTokenFromCookie = () => {
