@@ -131,15 +131,37 @@ const placeCODOrder = async (req, res) => {
   }
 };
 
-// ✅ Get all orders for the logged-in user
+// orderController.js
 const getAllUserOrders = async (req, res) => {
+  console.log("========================================");
+  console.log("📥 GET /api/order/my-orders called");
+  console.log("========================================");
+  
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    // Log the entire req.user object
+    console.log("🔍 req.user:", JSON.stringify(req.user, null, 2));
+    
+    const userId = req.user?.id || req.user?._id;
+    console.log("🔍 Extracted userId:", userId);
+    
+    if (!userId) {
+      console.log("❌ No userId found! req.user structure:", req.user);
+      return res.status(401).json({ 
+        message: "Unauthorized - No user ID",
+        debug: { 
+          hasReqUser: !!req.user,
+          reqUserKeys: req.user ? Object.keys(req.user) : []
+        }
+      });
+    }
 
+    console.log("🔍 Querying orders for user:", userId);
+    
     const orders = await Order.find({ user: userId })
       .populate("items.productId", "name brand price image")
       .sort({ createdAt: -1 });
+
+    console.log(`✅ Found ${orders.length} orders`);
 
     res.status(200).json({
       success: true,
@@ -147,8 +169,21 @@ const getAllUserOrders = async (req, res) => {
       totalOrders: orders.length,
       orders,
     });
+    
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server error while fetching user orders" });
+    console.error("========================================");
+    console.error("❌ ERROR in getAllUserOrders:");
+    console.error("Error name:", error.name);
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    console.error("========================================");
+    
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error while fetching user orders",
+      error: error.message,
+      errorName: error.name
+    });
   }
 };
 

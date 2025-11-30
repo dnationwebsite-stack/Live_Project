@@ -1,7 +1,7 @@
 import React from 'react'
 import Crausal from '../components/Crausal'
 import CartSlider from '../components/CartSlider'
-import banner from "../../assets/banner.webp"
+import banner from "../../assets/banner.png"
 import ProductGrid from '../components/ProductGrid'
 
 

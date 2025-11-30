@@ -16,14 +16,16 @@ const authMiddleware = (requiredRole = null) => {
       }
 
       if (!token) {
+        console.log("❌ No token found");
         return res.status(401).json({ message: "Unauthorized: Token missing" });
       }
-
 
       let decoded;
       try {
         decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log("✅ Token decoded successfully:", decoded);
       } catch (err) {
+        console.log("❌ Token verification failed:", err.message);
         return res.status(401).json({
           message:
             err.name === "TokenExpiredError"
@@ -32,27 +34,39 @@ const authMiddleware = (requiredRole = null) => {
         });
       }
 
-      // ✅ CRITICAL FIX: Check multiple possible ID fields
+      // ✅ CRITICAL FIX: Check all possible ID fields
       const userId = decoded._id || decoded.id || decoded.userId || decoded.sub;
       
+      console.log("🔍 Extracted userId:", userId);
+      
       if (!userId) {
-        return res.status(401).json({ message: "Unauthorized: Invalid token structure" });
+        console.log("❌ No user ID found in token. Decoded token:", decoded);
+        return res.status(401).json({ 
+          message: "Unauthorized: Invalid token structure",
+          debug: Object.keys(decoded) // Shows what fields are available
+        });
       }
 
       req.user = {
         id: userId,
+        _id: userId, // ✅ ADD THIS - some code uses _id instead of id
         email: decoded.email,
         role: decoded.role,
       };
 
       if (requiredRole && req.user.role !== requiredRole) {
-       
+        console.log(`❌ Role mismatch. Required: ${requiredRole}, Got: ${req.user.role}`);
         return res.status(403).json({ message: "Forbidden: Access denied" });
       }
 
+      console.log("✅ Auth successful. User:", req.user.id);
       next();
     } catch (err) {
-      return res.status(500).json({ message: "Internal server error" });
+      console.error("❌ Auth middleware error:", err);
+      return res.status(500).json({ 
+        message: "Internal server error",
+        error: err.message 
+      });
     }
   };
 };
