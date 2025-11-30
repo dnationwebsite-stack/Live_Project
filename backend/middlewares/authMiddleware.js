@@ -43,13 +43,13 @@ const authMiddleware = (requiredRole = null) => {
         console.log("❌ No user ID found in token. Decoded token:", decoded);
         return res.status(401).json({ 
           message: "Unauthorized: Invalid token structure",
-          debug: Object.keys(decoded) // Shows what fields are available
+          debug: Object.keys(decoded) 
         });
       }
 
       req.user = {
         id: userId,
-        _id: userId, // ✅ ADD THIS - some code uses _id instead of id
+        _id: userId, 
         email: decoded.email,
         role: decoded.role,
       };

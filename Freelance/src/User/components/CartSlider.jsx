@@ -40,7 +40,7 @@ const HomeCatGrid = () => {
             onClick={() => handleCategoryClick(category.name)}
           >
             <div
-              className="relative w-32 h-32 sm:w-36 sm:h-36 md:w-44 md:h-44 lg:w-48 lg:h-48 border border-gray-200 hover:shadow-lg transition-all duration-300 hover:scale-105 rounded-xl overflow-hidden"
+              className="relative w-32 h-32 sm:w-36 sm:h-36 md:w-44 md:h-44 lg:w-48 lg:h-48 border border-gray-200 hover:shadow-lg transition-all duration-300 hover:scale-105 rounded-full overflow-hidden"
             >
               <img
                 src={category.image}

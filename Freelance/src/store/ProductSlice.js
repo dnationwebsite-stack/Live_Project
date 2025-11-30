@@ -12,23 +12,17 @@ const useProductStore = create(
       error: null,
 
       fetchProducts: async () => {
-        console.log("🔵 fetchProducts: START");
         set({ loading: true, error: null });
         
         try {
           const url = `${API_BASE}/product/getAllProduct`;
-          console.log("🔵 Fetching from:", url);
           
           const res = await fetch(url, {
             method: "GET",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
           });
-          
-          console.log("🔵 Response status:", res.status);
-          console.log("🔵 Response ok:", res.ok);
-          console.log("🔵 Response headers:", Object.fromEntries(res.headers.entries()));
-          
+        
           if (!res.ok) {
             const errorText = await res.text();
             console.error("❌ Response not OK:", errorText);
@@ -36,47 +30,20 @@ const useProductStore = create(
           }
           
           const data = await res.json();
-          console.log("🔵 Raw response data:", data);
-          console.log("🔵 Response structure:", {
-            hasSuccess: 'success' in data,
-            hasData: 'data' in data,
-            dataType: typeof data.data,
-            isDataArray: Array.isArray(data.data),
-            dataLength: data.data?.length,
-            totalProducts: data.totalProducts,
-          });
           
           const products = data.data || [];
-          console.log("🔵 Extracted products:", products);
-          console.log("🔵 Products count:", products.length);
-          
-          if (products.length > 0) {
-            console.log("🔵 First product sample:", products[0]);
-            console.log("🔵 First product keys:", Object.keys(products[0]));
-            console.log("🔵 First product images:", products[0].images);
-            console.log("🔵 First product sizes:", products[0].sizes);
-          } else {
-            console.warn("⚠️ No products in response!");
-          }
           
           set({ products, loading: false });
-          console.log("✅ fetchProducts: COMPLETE - State updated with", products.length, "products");
           
           return products;
         } catch (err) {
-          console.error("❌ fetchProducts ERROR:", err);
-          console.error("❌ Error name:", err.name);
-          console.error("❌ Error message:", err.message);
-          console.error("❌ Error stack:", err.stack);
           
           set({ error: err.message, loading: false, products: [] });
           throw err;
         }
       },
 
-      getProductById: async (id) => {
-        console.log("🔵 getProductById:", id);
-        
+      getProductById: async (id) => {        
         try {
           const existingProduct = get().products.find((p) => p._id === id);
           if (existingProduct) {
@@ -98,7 +65,6 @@ const useProductStore = create(
           const data = await res.json();
           const product = data.product || data;
 
-          console.log("✅ Product fetched:", product);
 
           set((state) => ({
             products: [...state.products, product],
@@ -114,7 +80,6 @@ const useProductStore = create(
       },
 
       addProduct: async (productData) => {
-        console.log("🔵 addProduct: START");
         
         try {
           set({ loading: true, error: null });
@@ -128,7 +93,6 @@ const useProductStore = create(
           let formData;
           if (productData instanceof FormData) {
             formData = productData;
-            console.log("🔵 Using provided FormData");
           } else {
             formData = new FormData();
             if (productData.name) formData.append("name", productData.name);
@@ -148,7 +112,6 @@ const useProductStore = create(
                 }
               });
             }
-            console.log("🔵 Created FormData from object");
           }
 
           const res = await fetch(`${API_BASE}/product/addProduct`, {
@@ -160,7 +123,6 @@ const useProductStore = create(
             body: formData,
           });
 
-          console.log("🔵 Add product response status:", res.status);
 
           if (!res.ok) {
             const errorData = await res.json().catch(() => ({}));
@@ -169,8 +131,6 @@ const useProductStore = create(
 
           const data = await res.json();
           const product = data.data || data.product || data;
-
-          console.log("✅ Product added:", product);
 
           set((state) => ({
             products: [...state.products, product],
@@ -186,7 +146,6 @@ const useProductStore = create(
       },
 
       updateProduct: async (id, data) => {
-        console.log("🔵 updateProduct:", id);
         set({ loading: true, error: null });
         
         try {
@@ -210,11 +169,8 @@ const useProductStore = create(
             options.headers["Content-Type"] = "application/json";
           }
 
-          console.log("🔵 Update request type:", isFormData ? "FormData" : "JSON");
-
           const res = await fetch(`${API_BASE}/product/updateProduct/${id}`, options);
 
-          console.log("🔵 Update response status:", res.status);
 
           if (!res.ok) {
             const errorData = await res.json().catch(() => ({}));
@@ -223,7 +179,6 @@ const useProductStore = create(
 
           const response = await res.json();
 
-          console.log("✅ Product updated:", response.data);
 
           if (response.success) {
             set((state) => ({
@@ -242,7 +197,6 @@ const useProductStore = create(
       },
 
       deleteProduct: async (id) => {
-        console.log("🔵 deleteProduct:", id);
         
         try {
           set({ loading: true, error: null });
@@ -267,7 +221,6 @@ const useProductStore = create(
             throw new Error(errorData.message || "Failed to delete product");
           }
 
-          console.log("✅ Product deleted");
 
           set((state) => ({
             products: state.products.filter((p) => p._id !== id),

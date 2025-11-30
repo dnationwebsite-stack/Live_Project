@@ -541,7 +541,7 @@ export const useUserStore = create(
       },
 
      fetchUserOrders: async () => {
-  const { token } = get(); // ✅ ADD: Get the token from store
+  const { token } = get();
   
   try {
     set({ loading: true, error: null });
@@ -551,7 +551,7 @@ export const useUserStore = create(
       credentials: "include",
       headers: { 
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // ✅ ADD: Authorization header
+        Authorization: `Bearer ${token}`,
       },
     });
 
