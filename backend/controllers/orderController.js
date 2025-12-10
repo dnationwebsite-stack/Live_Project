@@ -163,11 +163,15 @@ const getAllUserOrders = async (req, res) => {
 
     console.log(`✅ Found ${orders.length} orders`);
 
+    console.log("Orders", typeof orders);
+    
+
+
     res.status(200).json({
       success: true,
       message: "User orders fetched successfully",
       totalOrders: orders.length,
-      orders,
+      orders:orders,
     });
     
   } catch (error) {

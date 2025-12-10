@@ -110,9 +110,11 @@ productSchema.index({ status: 1 });
 productSchema.index({ name: "text", description: "text" });
 
 // ✅ Virtual for total stock
-productSchema.virtual("totalStock").get(function() {
-  return this.sizes.reduce((total, size) => total + size.stock, 0);
+productSchema.virtual("totalStock").get(function () {
+  const sizes = Array.isArray(this.sizes) ? this.sizes : [];
+  return sizes.reduce((total, size) => total + (size.stock || 0), 0);
 });
+
 
 // ✅ Pre-save hook to ensure at least one primary image
 productSchema.pre("save", function(next) {

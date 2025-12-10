@@ -6,11 +6,19 @@ const Razorpay = require("razorpay");
 const cors = require("cors");
 const connectDB = require("./config/db");
 const cookieParser = require("cookie-parser");
+const multer = require("multer");
+const fs = require("fs");
 
 const app = express();
 
+const uploadsDir = './uploads';
+if (!fs.existsSync(uploadsDir)){
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 /* ---------------------- MIDDLEWARE ---------------------- */
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
 
 connectDB();
@@ -44,6 +52,38 @@ app.use("/api/order", orderRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/dash", getDashboardStats);
 app.use("/api/admin", coustomerRoutes);
+
+/* ---------------------- MULTER ERROR HANDLING ---------------------- */
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        success: false,
+        message: 'File size too large. Maximum 10MB per file allowed.'
+      });
+    }
+    if (error.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({
+        success: false,
+        message: 'Too many files. Maximum 10 files allowed.'
+      });
+    }
+  }
+  
+  if (error.message === 'Only image files are allowed!') {
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+  
+  console.error('Server Error:', error);
+  res.status(500).json({
+    success: false,
+    message: 'Server error',
+    error: error.message
+  });
+});
 
 /* ---------------------- START SERVER ----------------------- */
 const PORT = process.env.PORT || 5000;

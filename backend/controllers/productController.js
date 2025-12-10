@@ -1,6 +1,7 @@
 const Product = require("../models/productModel");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
+const fs = require("fs");
 
 // Configure Cloudinary (add to your config file)
 cloudinary.config({
@@ -12,30 +13,75 @@ cloudinary.config({
 // ============================================
 // CREATE PRODUCT WITH MULTIPLE IMAGES
 // ============================================
+
+
 exports.createProduct = async (req, res) => {
   try {
+    console.log("📝 Body:", req.body);
+    console.log("📁 Files:", req.files);
+
     const { name, brand, price, category, subcategory, sizes, description, status } = req.body;
     
+    // ✅ Validate required fields
+    if (!name || !price || !category) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, price, and category are required"
+      });
+    }
+
     // Handle multiple image uploads
     const images = [];
     
     if (req.files && req.files.length > 0) {
+      console.log(`📤 Uploading ${req.files.length} images to Cloudinary...`);
+      
       // Upload each file to Cloudinary
       for (let i = 0; i < req.files.length; i++) {
-        const result = await cloudinary.uploader.upload(req.files[i].path, {
-          folder: "products",
-          transformation: [
-            { width: 800, height: 800, crop: "limit" },
-            { quality: "auto" }
-          ]
-        });
-        
-        images.push({
-          url: result.secure_url,
-          publicId: result.public_id,
-          alt: `${name} - Image ${i + 1}`,
-          isPrimary: i === 0, // First image is primary
-          order: i
+        try {
+          const result = await cloudinary.uploader.upload(req.files[i].path, {
+            folder: "products",
+            transformation: [
+              { width: 800, height: 800, crop: "limit" },
+              { quality: "auto" }
+            ]
+          });
+          
+          images.push({
+            url: result.secure_url,
+            publicId: result.public_id,
+            alt: `${name} - Image ${i + 1}`,
+            isPrimary: i === 0, // First image is primary
+            order: i
+          });
+
+          // ✅ Delete local file after successful upload
+          fs.unlink(req.files[i].path, (err) => {
+            if (err) console.error(`Error deleting file ${req.files[i].path}:`, err);
+          });
+          
+        } catch (uploadError) {
+          console.error(`❌ Error uploading image ${i}:`, uploadError);
+          // ✅ Delete file even if upload fails
+          fs.unlink(req.files[i].path, (err) => {
+            if (err) console.error(`Error deleting file:`, err);
+          });
+        }
+      }
+      
+      console.log(`✅ Successfully uploaded ${images.length} images to Cloudinary`);
+    }
+
+    // ✅ Parse sizes safely
+    let parsedSizes = [];
+    if (sizes) {
+      try {
+        parsedSizes = typeof sizes === 'string' ? JSON.parse(sizes) : sizes;
+      } catch (e) {
+        console.error("❌ Error parsing sizes:", e);
+        return res.status(400).json({
+          success: false,
+          message: "Invalid sizes format"
         });
       }
     }
@@ -46,10 +92,10 @@ exports.createProduct = async (req, res) => {
       price,
       category,
       subcategory,
-      sizes: sizes ? JSON.parse(sizes) : [],
+      sizes: parsedSizes,
       images: images.length > 0 ? images : undefined, // Use default if no images
       description,
-      status
+      status: status || 'active' // ✅ Default to 'active'
     });
 
     await product.save();
@@ -59,8 +105,19 @@ exports.createProduct = async (req, res) => {
       message: "Product created successfully",
       data: product
     });
+    
   } catch (error) {
-    console.error("Create Product Error:", error);
+    console.error("❌ Create Product Error:", error);
+    
+    // ✅ Clean up files on error
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error(`Error deleting file:`, err);
+        });
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: "Failed to create product",
