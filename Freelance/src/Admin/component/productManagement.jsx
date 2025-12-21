@@ -55,7 +55,6 @@ export default function ProductManagement() {
   });
 
   useEffect(() => {
-    console.log("Products loaded:", products.length);
     fetchProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -116,7 +115,6 @@ export default function ProductManagement() {
           sizes: formData.sizes.map((s) => ({ size: s.size, stock: Number(s.stock) })),
         };
 
-        console.log("📤 Updating product with JSON (no new images):", updateData);
         await updateProduct(editingId, updateData);
       } else {
         // CREATE OR UPDATE WITH NEW IMAGES -> send FormData
@@ -138,14 +136,11 @@ export default function ProductManagement() {
           formData.newImages.forEach((image) => {
             productData.append("images", image);
           });
-          console.log("📤 Including", formData.newImages.length, "new images");
         }
 
         if (editingId) {
-          console.log("📤 Updating product with FormData (has new images)");
           await updateProduct(editingId, productData);
         } else {
-          console.log("📤 Creating product with", formData.newImages.length, "images");
           await addProduct(productData);
         }
       }
@@ -156,7 +151,6 @@ export default function ProductManagement() {
       resetForm();
       await fetchProducts();
     } catch (err) {
-      console.error("Error saving product:", err);
       toast.error(err?.message || "Failed to save product");
     }
   };
@@ -242,7 +236,7 @@ const handleImageUpload = async (e) => {
       const file = files[i];
       
       const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
-      console.log(`📦 Original: ${file.name} - ${originalSizeMB}MB`);
+   
 
       try {
         // ✅ Compress the image
@@ -250,7 +244,6 @@ const handleImageUpload = async (e) => {
         
         // ✅ If still too large, compress more aggressively
         if (compressedFile.size > 500 * 1024) { // If still > 500KB
-          console.log(`⚠️ File still large, compressing more...`);
           compressedFile = await imageCompression(file, {
             ...compressionOptions,
             maxSizeMB: 0.3,
@@ -260,17 +253,14 @@ const handleImageUpload = async (e) => {
         }
 
         const compressedSizeMB = (compressedFile.size / 1024 / 1024).toFixed(2);
-        console.log(`✅ Compressed: ${file.name} - ${compressedSizeMB}MB (saved ${(originalSizeMB - compressedSizeMB).toFixed(2)}MB)`);
 
-        // ✅ Final size check
-        if (compressedFile.size > 1024 * 1024) { // If still > 1MB
+        if (compressedFile.size > 1024 * 1024) {
           toast.error(`${file.name} is too large even after compression`, { id: toastId });
           continue;
         }
 
-        // Create new file with original name
         const newFile = new File([compressedFile], file.name, {
-          type: 'image/jpeg', // Force JPEG
+          type: 'image/jpeg',
           lastModified: Date.now()
         });
 
@@ -278,22 +268,16 @@ const handleImageUpload = async (e) => {
         newPreviews.push(URL.createObjectURL(compressedFile));
 
       } catch (compressionError) {
-        console.error(`❌ Compression failed for ${file.name}:`, compressionError);
         toast.error(`Failed to compress ${file.name}`, { id: toastId });
       }
     }
 
     if (compressedFiles.length > 0) {
-      // ✅ Check total size of all new images
       const totalSize = compressedFiles.reduce((sum, f) => sum + f.size, 0);
       const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
       
-      console.log(`📊 Total size of ${compressedFiles.length} images: ${totalSizeMB}MB`);
-      
-      // ✅ Warn if total is too large (> 5MB total)
       if (totalSize > 5 * 1024 * 1024) {
         toast.error(`Total size (${totalSizeMB}MB) exceeds 5MB limit. Please upload fewer images.`, { id: toastId });
-        // Clean up previews
         newPreviews.forEach(preview => URL.revokeObjectURL(preview));
         return;
       }
@@ -309,7 +293,6 @@ const handleImageUpload = async (e) => {
       toast.error("No images could be processed", { id: toastId });
     }
   } catch (error) {
-    console.error("Error processing images:", error);
     toast.error("Failed to process images", { id: toastId });
   }
 };
