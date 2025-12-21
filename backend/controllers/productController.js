@@ -37,7 +37,6 @@ exports.createProduct = async (req, res) => {
     const images = [];
 
     if (req.files && req.files.length > 0) {
-      console.log(`📤 Uploading ${req.files.length} images to Cloudinary...`);
 
       // Upload each file to Cloudinary
       for (let i = 0; i < req.files.length; i++) {

@@ -4,18 +4,11 @@ import { X, Download } from "lucide-react";
 export default function OrderDetailsModal({ order, onClose }) {
   if (!order) return null;
 
-  // Debug: Log the order structure
-  console.log("Full Order:", order);
-  console.log("Order Items:", order.items);
-
-  // Helper function to get image URL - matches your product structure
   const getImageUrl = (item) => {
     let imageUrl = null;
     
-    // Check productId.primaryImage first
     if (item.productId?.primaryImage) {
       const primaryImg = item.productId.primaryImage;
-      // primaryImage might be an object with url property or just a string
       imageUrl = typeof primaryImg === 'string' ? primaryImg : primaryImg.url;
     } else if (item.productId?.images && item.productId.images.length > 0) {
       const firstImage = item.productId.images[0];
@@ -28,17 +21,13 @@ export default function OrderDetailsModal({ order, onClose }) {
     } else if (item.image) {
       imageUrl = item.image;
     }
-    
-    // If no image found or it's a placeholder URL, use data URL
+
     if (!imageUrl || imageUrl.includes('placeholder')) {
-      // Return a simple gray SVG as base64 data URL (works offline)
       return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='14' fill='%23666'%3ENo Image%3C/text%3E%3C/svg%3E";
     }
-    
-    // If it's already a full URL, return as is
+
     if (imageUrl.startsWith("http")) return imageUrl;
     
-    // Otherwise, prepend your backend URL
     return `http://localhost:5000/uploads/${imageUrl}`;
   };
 
