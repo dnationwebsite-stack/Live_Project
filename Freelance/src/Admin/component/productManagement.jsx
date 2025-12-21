@@ -223,16 +223,16 @@ const handleImageUpload = async (e) => {
     return;
   }
 
-  // ✅ Compression options
+  // ✅ More aggressive compression options
   const compressionOptions = {
-    maxSizeMB: 1, // Max 1MB per image after compression
-    maxWidthOrHeight: 1920, // Max dimension
+    maxSizeMB: 0.5, // ⬇️ Reduced from 1MB to 500KB
+    maxWidthOrHeight: 1200, // ⬇️ Reduced from 1920 to 1200
     useWebWorker: true,
-    fileType: 'image/jpeg', // Convert to JPEG for better compression
-    initialQuality: 0.8 // Start with 80% quality
+    fileType: 'image/jpeg',
+    initialQuality: 0.7 // ⬇️ Reduced from 0.8 to 0.7
   };
 
-  toast.loading("Compressing images...", { id: "compress" });
+  const toastId = toast.loading("Compressing images...");
 
   try {
     const compressedFiles = [];
@@ -241,53 +241,76 @@ const handleImageUpload = async (e) => {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       
-      // Show original size
       const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
       console.log(`📦 Original: ${file.name} - ${originalSizeMB}MB`);
 
       try {
         // ✅ Compress the image
-        const compressedFile = await imageCompression(file, compressionOptions);
+        let compressedFile = await imageCompression(file, compressionOptions);
         
+        // ✅ If still too large, compress more aggressively
+        if (compressedFile.size > 500 * 1024) { // If still > 500KB
+          console.log(`⚠️ File still large, compressing more...`);
+          compressedFile = await imageCompression(file, {
+            ...compressionOptions,
+            maxSizeMB: 0.3,
+            maxWidthOrHeight: 800,
+            initialQuality: 0.6
+          });
+        }
+
         const compressedSizeMB = (compressedFile.size / 1024 / 1024).toFixed(2);
         console.log(`✅ Compressed: ${file.name} - ${compressedSizeMB}MB (saved ${(originalSizeMB - compressedSizeMB).toFixed(2)}MB)`);
 
+        // ✅ Final size check
+        if (compressedFile.size > 1024 * 1024) { // If still > 1MB
+          toast.error(`${file.name} is too large even after compression`, { id: toastId });
+          continue;
+        }
+
         // Create new file with original name
         const newFile = new File([compressedFile], file.name, {
-          type: compressedFile.type,
+          type: 'image/jpeg', // Force JPEG
           lastModified: Date.now()
         });
 
         compressedFiles.push(newFile);
         newPreviews.push(URL.createObjectURL(compressedFile));
+
       } catch (compressionError) {
         console.error(`❌ Compression failed for ${file.name}:`, compressionError);
-        
-        // If compression fails, check if original is under 5MB
-        if (file.size <= 5 * 1024 * 1024) {
-          compressedFiles.push(file);
-          newPreviews.push(URL.createObjectURL(file));
-          console.log(`⚠️ Using original file (under 5MB)`);
-        } else {
-          toast.error(`${file.name} is too large and compression failed`);
-        }
+        toast.error(`Failed to compress ${file.name}`, { id: toastId });
       }
     }
 
     if (compressedFiles.length > 0) {
+      // ✅ Check total size of all new images
+      const totalSize = compressedFiles.reduce((sum, f) => sum + f.size, 0);
+      const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
+      
+      console.log(`📊 Total size of ${compressedFiles.length} images: ${totalSizeMB}MB`);
+      
+      // ✅ Warn if total is too large (> 5MB total)
+      if (totalSize > 5 * 1024 * 1024) {
+        toast.error(`Total size (${totalSizeMB}MB) exceeds 5MB limit. Please upload fewer images.`, { id: toastId });
+        // Clean up previews
+        newPreviews.forEach(preview => URL.revokeObjectURL(preview));
+        return;
+      }
+
       setFormData((prev) => ({ 
         ...prev, 
         newImages: [...prev.newImages, ...compressedFiles] 
       }));
       setNewImagePreviews((prev) => [...prev, ...newPreviews]);
       
-      toast.success(`${compressedFiles.length} image(s) compressed and ready`, { id: "compress" });
+      toast.success(`${compressedFiles.length} image(s) compressed (Total: ${totalSizeMB}MB)`, { id: toastId });
     } else {
-      toast.error("No images could be processed", { id: "compress" });
+      toast.error("No images could be processed", { id: toastId });
     }
   } catch (error) {
     console.error("Error processing images:", error);
-    toast.error("Failed to process images", { id: "compress" });
+    toast.error("Failed to process images", { id: toastId });
   }
 };
 
