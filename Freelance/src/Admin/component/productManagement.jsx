@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import useProductStore from "../../store/ProductSlice";
 import toast, { Toaster } from "react-hot-toast";
+import imageCompression from 'browser-image-compression';
 
 export default function ProductManagement() {
   const {
@@ -212,29 +213,83 @@ export default function ProductManagement() {
   };
 
   // Handle NEW image uploads
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+const handleImageUpload = async (e) => {
+  const files = Array.from(e.target.files || []);
+  if (files.length === 0) return;
 
-    const totalImages = formData.existingImages.length + formData.newImages.length + files.length;
-    if (totalImages > 10) {
-      toast.error("Maximum 10 images allowed per product");
-      return;
-    }
+  const totalImages = formData.existingImages.length + formData.newImages.length + files.length;
+  if (totalImages > 10) {
+    toast.error("Maximum 10 images allowed per product");
+    return;
+  }
 
-    const invalidFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
-    if (invalidFiles.length > 0) {
-      toast.error("Each image must be less than 5MB");
-      return;
-    }
-
-    setFormData((prev) => ({ ...prev, newImages: [...prev.newImages, ...files] }));
-
-    const newPreviews = files.map((file) => URL.createObjectURL(file));
-    setNewImagePreviews((prev) => [...prev, ...newPreviews]);
-
-    toast.success(`${files.length} image(s) added`);
+  // ✅ Compression options
+  const compressionOptions = {
+    maxSizeMB: 1, // Max 1MB per image after compression
+    maxWidthOrHeight: 1920, // Max dimension
+    useWebWorker: true,
+    fileType: 'image/jpeg', // Convert to JPEG for better compression
+    initialQuality: 0.8 // Start with 80% quality
   };
+
+  toast.loading("Compressing images...", { id: "compress" });
+
+  try {
+    const compressedFiles = [];
+    const newPreviews = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      // Show original size
+      const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
+      console.log(`📦 Original: ${file.name} - ${originalSizeMB}MB`);
+
+      try {
+        // ✅ Compress the image
+        const compressedFile = await imageCompression(file, compressionOptions);
+        
+        const compressedSizeMB = (compressedFile.size / 1024 / 1024).toFixed(2);
+        console.log(`✅ Compressed: ${file.name} - ${compressedSizeMB}MB (saved ${(originalSizeMB - compressedSizeMB).toFixed(2)}MB)`);
+
+        // Create new file with original name
+        const newFile = new File([compressedFile], file.name, {
+          type: compressedFile.type,
+          lastModified: Date.now()
+        });
+
+        compressedFiles.push(newFile);
+        newPreviews.push(URL.createObjectURL(compressedFile));
+      } catch (compressionError) {
+        console.error(`❌ Compression failed for ${file.name}:`, compressionError);
+        
+        // If compression fails, check if original is under 5MB
+        if (file.size <= 5 * 1024 * 1024) {
+          compressedFiles.push(file);
+          newPreviews.push(URL.createObjectURL(file));
+          console.log(`⚠️ Using original file (under 5MB)`);
+        } else {
+          toast.error(`${file.name} is too large and compression failed`);
+        }
+      }
+    }
+
+    if (compressedFiles.length > 0) {
+      setFormData((prev) => ({ 
+        ...prev, 
+        newImages: [...prev.newImages, ...compressedFiles] 
+      }));
+      setNewImagePreviews((prev) => [...prev, ...newPreviews]);
+      
+      toast.success(`${compressedFiles.length} image(s) compressed and ready`, { id: "compress" });
+    } else {
+      toast.error("No images could be processed", { id: "compress" });
+    }
+  } catch (error) {
+    console.error("Error processing images:", error);
+    toast.error("Failed to process images", { id: "compress" });
+  }
+};
 
   // Remove NEW image (local only)
   const removeNewImage = (index) => {

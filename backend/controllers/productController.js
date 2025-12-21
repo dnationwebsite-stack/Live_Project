@@ -14,52 +14,55 @@ cloudinary.config({
 // CREATE PRODUCT WITH MULTIPLE IMAGES
 // ============================================
 
-
 exports.createProduct = async (req, res) => {
   try {
-    console.log("📝 Body:", req.body);
-    console.log("📁 Files:", req.files);
+    const {
+      name,
+      brand,
+      price,
+      category,
+      subcategory,
+      sizes,
+      description,
+      status,
+    } = req.body;
 
-    const { name, brand, price, category, subcategory, sizes, description, status } = req.body;
-    
-    // ✅ Validate required fields
     if (!name || !price || !category) {
       return res.status(400).json({
         success: false,
-        message: "Name, price, and category are required"
+        message: "Name, price, and category are required",
       });
     }
 
-    // Handle multiple image uploads
     const images = [];
-    
+
     if (req.files && req.files.length > 0) {
       console.log(`📤 Uploading ${req.files.length} images to Cloudinary...`);
-      
+
       // Upload each file to Cloudinary
       for (let i = 0; i < req.files.length; i++) {
         try {
           const result = await cloudinary.uploader.upload(req.files[i].path, {
             folder: "products",
-            transformation: [
-              { width: 800, height: 800, crop: "limit" },
-              { quality: "auto" }
-            ]
+            quality: "auto", // auto compress
+            fetch_format: "auto", // best format (webp/avif)
+            width: 800,
+            crop: "limit",
           });
-          
+
           images.push({
             url: result.secure_url,
             publicId: result.public_id,
             alt: `${name} - Image ${i + 1}`,
             isPrimary: i === 0, // First image is primary
-            order: i
+            order: i,
           });
 
           // ✅ Delete local file after successful upload
           fs.unlink(req.files[i].path, (err) => {
-            if (err) console.error(`Error deleting file ${req.files[i].path}:`, err);
+            if (err)
+              console.error(`Error deleting file ${req.files[i].path}:`, err);
           });
-          
         } catch (uploadError) {
           console.error(`❌ Error uploading image ${i}:`, uploadError);
           // ✅ Delete file even if upload fails
@@ -68,20 +71,22 @@ exports.createProduct = async (req, res) => {
           });
         }
       }
-      
-      console.log(`✅ Successfully uploaded ${images.length} images to Cloudinary`);
+
+      console.log(
+        `✅ Successfully uploaded ${images.length} images to Cloudinary`
+      );
     }
 
     // ✅ Parse sizes safely
     let parsedSizes = [];
     if (sizes) {
       try {
-        parsedSizes = typeof sizes === 'string' ? JSON.parse(sizes) : sizes;
+        parsedSizes = typeof sizes === "string" ? JSON.parse(sizes) : sizes;
       } catch (e) {
         console.error("❌ Error parsing sizes:", e);
         return res.status(400).json({
           success: false,
-          message: "Invalid sizes format"
+          message: "Invalid sizes format",
         });
       }
     }
@@ -95,7 +100,7 @@ exports.createProduct = async (req, res) => {
       sizes: parsedSizes,
       images: images.length > 0 ? images : undefined, // Use default if no images
       description,
-      status: status || 'active' // ✅ Default to 'active'
+      status: status || "active", // ✅ Default to 'active'
     });
 
     await product.save();
@@ -103,25 +108,24 @@ exports.createProduct = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Product created successfully",
-      data: product
+      data: product,
     });
-    
   } catch (error) {
     console.error("❌ Create Product Error:", error);
-    
+
     // ✅ Clean up files on error
     if (req.files && req.files.length > 0) {
-      req.files.forEach(file => {
+      req.files.forEach((file) => {
         fs.unlink(file.path, (err) => {
           if (err) console.error(`Error deleting file:`, err);
         });
       });
     }
-    
+
     res.status(500).json({
       success: false,
       message: "Failed to create product",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -142,7 +146,7 @@ exports.getAllProducts = async (req, res) => {
     const products = await Product.find(filter)
       .select("+images +sizes") // ✅ Explicitly include subdocument arrays
       .sort({ createdAt: -1 })
-       .limit(10000) 
+      .limit(10000)
       .lean(); // ✅ Returns plain JavaScript objects
 
     const total = await Product.countDocuments(filter);
@@ -155,25 +159,28 @@ exports.getAllProducts = async (req, res) => {
         name: products[0].name,
         imagesCount: products[0].images?.length || 0,
         sizesCount: products[0].sizes?.length || 0,
-        hasAllFields: !!(products[0].name && products[0].price && products[0].category)
+        hasAllFields: !!(
+          products[0].name &&
+          products[0].price &&
+          products[0].category
+        ),
       });
     }
 
     res.status(200).json({
       success: true,
       data: products,
-      totalProducts: total
+      totalProducts: total,
     });
   } catch (error) {
     console.error("❌ Get All Products Error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch products",
-      error: error.message
+      error: error.message,
     });
   }
 };
-
 
 // ============================================
 // GET SINGLE PRODUCT
@@ -181,23 +188,23 @@ exports.getAllProducts = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    
+
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found"
+        message: "Product not found",
       });
     }
 
     res.status(200).json({
       success: true,
-      data: product
+      data: product,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Failed to fetch product",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -208,18 +215,18 @@ exports.getProductById = async (req, res) => {
 exports.addImages = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    
+
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found"
+        message: "Product not found",
       });
     }
 
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "No images provided"
+        message: "No images provided",
       });
     }
 
@@ -227,7 +234,7 @@ exports.addImages = async (req, res) => {
     if (product.images.length + req.files.length > 10) {
       return res.status(400).json({
         success: false,
-        message: "Maximum 10 images allowed per product"
+        message: "Maximum 10 images allowed per product",
       });
     }
 
@@ -238,16 +245,16 @@ exports.addImages = async (req, res) => {
         folder: "products",
         transformation: [
           { width: 800, height: 800, crop: "limit" },
-          { quality: "auto" }
-        ]
+          { quality: "auto" },
+        ],
       });
-      
+
       newImages.push({
         url: result.secure_url,
         publicId: result.public_id,
         alt: `${product.name} - Image ${product.images.length + i + 1}`,
         isPrimary: false,
-        order: product.images.length + i
+        order: product.images.length + i,
       });
     }
 
@@ -257,13 +264,13 @@ exports.addImages = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Images added successfully",
-      data: product
+      data: product,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Failed to add images",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -274,22 +281,24 @@ exports.addImages = async (req, res) => {
 exports.deleteImage = async (req, res) => {
   try {
     const { id, imageId } = req.params;
-    
+
     const product = await Product.findById(id);
-    
+
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found"
+        message: "Product not found",
       });
     }
 
-    const imageIndex = product.images.findIndex(img => img._id.toString() === imageId);
-    
+    const imageIndex = product.images.findIndex(
+      (img) => img._id.toString() === imageId
+    );
+
     if (imageIndex === -1) {
       return res.status(404).json({
         success: false,
-        message: "Image not found"
+        message: "Image not found",
       });
     }
 
@@ -299,7 +308,8 @@ exports.deleteImage = async (req, res) => {
     if (product.images.length === 1) {
       return res.status(400).json({
         success: false,
-        message: "Cannot delete the only image. Product must have at least one image."
+        message:
+          "Cannot delete the only image. Product must have at least one image.",
       });
     }
 
@@ -327,14 +337,14 @@ exports.deleteImage = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Image deleted successfully",
-      data: product
+      data: product,
     });
   } catch (error) {
     console.error("Delete Image Error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to delete image",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -345,28 +355,30 @@ exports.deleteImage = async (req, res) => {
 exports.setPrimaryImage = async (req, res) => {
   try {
     const { id, imageId } = req.params;
-    
+
     const product = await Product.findById(id);
-    
+
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found"
+        message: "Product not found",
       });
     }
 
     // Find the image
-    const targetImage = product.images.find(img => img._id.toString() === imageId);
-    
+    const targetImage = product.images.find(
+      (img) => img._id.toString() === imageId
+    );
+
     if (!targetImage) {
       return res.status(404).json({
         success: false,
-        message: "Image not found"
+        message: "Image not found",
       });
     }
 
     // Set all images to not primary
-    product.images.forEach(img => {
+    product.images.forEach((img) => {
       img.isPrimary = false;
     });
 
@@ -378,14 +390,14 @@ exports.setPrimaryImage = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Primary image updated successfully",
-      data: product
+      data: product,
     });
   } catch (error) {
     console.error("Set Primary Image Error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to set primary image",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -397,20 +409,20 @@ exports.reorderImages = async (req, res) => {
   try {
     const { id } = req.params;
     const { imageOrder } = req.body; // Array of image IDs in desired order
-    
+
     if (!Array.isArray(imageOrder)) {
       return res.status(400).json({
         success: false,
-        message: "imageOrder must be an array"
+        message: "imageOrder must be an array",
       });
     }
 
     const product = await Product.findById(id);
-    
+
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found"
+        message: "Product not found",
       });
     }
 
@@ -418,24 +430,26 @@ exports.reorderImages = async (req, res) => {
     if (imageOrder.length !== product.images.length) {
       return res.status(400).json({
         success: false,
-        message: "Image order array length must match number of product images"
+        message: "Image order array length must match number of product images",
       });
     }
 
     // Create a new ordered array
     const reorderedImages = [];
-    
+
     for (let i = 0; i < imageOrder.length; i++) {
       const imageId = imageOrder[i];
-      const image = product.images.find(img => img._id.toString() === imageId);
-      
+      const image = product.images.find(
+        (img) => img._id.toString() === imageId
+      );
+
       if (!image) {
         return res.status(400).json({
           success: false,
-          message: `Image with ID ${imageId} not found`
+          message: `Image with ID ${imageId} not found`,
         });
       }
-      
+
       // Update the order property
       image.order = i;
       reorderedImages.push(image);
@@ -448,14 +462,14 @@ exports.reorderImages = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Images reordered successfully",
-      data: product
+      data: product,
     });
   } catch (error) {
     console.error("Reorder Images Error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to reorder images",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -469,14 +483,14 @@ exports.updateProduct = async (req, res) => {
     console.log("Update Product - ID:", id);
     console.log("Update Product - Request Body:", req.body);
     console.log("Update Product - Files:", req.files?.length || 0);
-    console.log("Content-Type:", req.headers['content-type']);
+    console.log("Content-Type:", req.headers["content-type"]);
 
     // Check if body is empty
     if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
         success: false,
         message: "Request body is empty. Please provide data to update.",
-        hint: "Make sure Content-Type header is set correctly and middleware is configured"
+        hint: "Make sure Content-Type header is set correctly and middleware is configured",
       });
     }
 
@@ -484,7 +498,7 @@ exports.updateProduct = async (req, res) => {
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid product ID format"
+        message: "Invalid product ID format",
       });
     }
 
@@ -493,72 +507,81 @@ exports.updateProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found"
+        message: "Product not found",
       });
     }
 
     console.log("Product found:", product._id);
 
     // Extract fields from request body
-    const { name, brand, price, category, subcategory, sizes, description, status } = req.body;
+    const {
+      name,
+      brand,
+      price,
+      category,
+      subcategory,
+      sizes,
+      description,
+      status,
+    } = req.body;
 
     // Track what's being updated
     let updated = false;
 
     // Update only provided fields
-    if (name !== undefined && name !== '') {
+    if (name !== undefined && name !== "") {
       product.name = name;
       console.log("Updating name to:", name);
       updated = true;
     }
-    
-    if (brand !== undefined && brand !== '') {
+
+    if (brand !== undefined && brand !== "") {
       product.brand = brand;
       console.log("Updating brand to:", brand);
       updated = true;
     }
-    
-    if (price !== undefined && price !== '') {
+
+    if (price !== undefined && price !== "") {
       product.price = parseFloat(price);
       console.log("Updating price to:", price);
       updated = true;
     }
-    
-    if (category !== undefined && category !== '') {
+
+    if (category !== undefined && category !== "") {
       product.category = category;
       console.log("Updating category to:", category);
       updated = true;
     }
-    
-    if (subcategory !== undefined && subcategory !== '') {
+
+    if (subcategory !== undefined && subcategory !== "") {
       product.subcategory = subcategory;
       console.log("Updating subcategory to:", subcategory);
       updated = true;
     }
-    
+
     if (description !== undefined) {
       product.description = description;
       console.log("Updating description");
       updated = true;
     }
-    
-    if (status !== undefined && status !== '') {
+
+    if (status !== undefined && status !== "") {
       product.status = status;
       console.log("Updating status to:", status);
       updated = true;
     }
-    
+
     // Handle sizes - parse if it's a string
     if (sizes !== undefined) {
       try {
-        product.sizes = typeof sizes === 'string' ? JSON.parse(sizes) : sizes;
+        product.sizes = typeof sizes === "string" ? JSON.parse(sizes) : sizes;
         console.log("Updating sizes to:", product.sizes);
         updated = true;
       } catch (parseError) {
         console.error("Error parsing sizes:", parseError);
         return res.status(400).json({
           success: false,
-          message: "Invalid sizes format. Must be valid JSON array."
+          message: "Invalid sizes format. Must be valid JSON array.",
         });
       }
     }
@@ -566,12 +589,12 @@ exports.updateProduct = async (req, res) => {
     // ✅ Handle NEW image uploads
     if (req.files && req.files.length > 0) {
       console.log("Processing", req.files.length, "new images");
-      
+
       // Check total images limit (existing + new)
       if (product.images.length + req.files.length > 10) {
         return res.status(400).json({
           success: false,
-          message: `Maximum 10 images allowed. You have ${product.images.length} existing images.`
+          message: `Maximum 10 images allowed. You have ${product.images.length} existing images.`,
         });
       }
 
@@ -583,22 +606,22 @@ exports.updateProduct = async (req, res) => {
             folder: "products",
             transformation: [
               { width: 800, height: 800, crop: "limit" },
-              { quality: "auto" }
-            ]
+              { quality: "auto" },
+            ],
           });
-          
+
           newImages.push({
             url: result.secure_url,
             publicId: result.public_id,
             alt: `${product.name} - Image ${product.images.length + i + 1}`,
             isPrimary: product.images.length === 0 && i === 0, // First image is primary if no existing images
-            order: product.images.length + i
+            order: product.images.length + i,
           });
         } catch (uploadError) {
           console.error("Cloudinary upload error:", uploadError);
           return res.status(500).json({
             success: false,
-            message: "Failed to upload images to cloud storage"
+            message: "Failed to upload images to cloud storage",
           });
         }
       }
@@ -612,36 +635,36 @@ exports.updateProduct = async (req, res) => {
     if (!updated) {
       return res.status(400).json({
         success: false,
-        message: "No valid fields provided to update"
+        message: "No valid fields provided to update",
       });
     }
 
     // Mark the document as modified (important for subdocuments)
-    product.markModified('sizes');
-    product.markModified('images');
+    product.markModified("sizes");
+    product.markModified("images");
 
     console.log("Saving product...");
-    
+
     // Save with validation
     const savedProduct = await product.save({ validateBeforeSave: true });
-    
+
     console.log("Product saved successfully:", savedProduct._id);
 
     res.status(200).json({
       success: true,
       message: "Product updated successfully",
-      data: savedProduct
+      data: savedProduct,
     });
   } catch (error) {
     console.error("Update Product Error:", error);
-    
+
     // Handle validation errors
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map(err => err.message);
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((err) => err.message);
       return res.status(400).json({
         success: false,
         message: "Validation failed",
-        errors: messages
+        errors: messages,
       });
     }
 
@@ -649,7 +672,7 @@ exports.updateProduct = async (req, res) => {
       success: false,
       message: "Failed to update product",
       error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 };
@@ -660,19 +683,18 @@ exports.updateProduct = async (req, res) => {
 exports.deleteProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    
+
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found"
+        message: "Product not found",
       });
     }
     for (const image of product.images) {
       if (image.publicId) {
         try {
           await cloudinary.uploader.destroy(image.publicId);
-        } catch (cloudinaryError) {
-        }
+        } catch (cloudinaryError) {}
       }
     }
 
@@ -680,13 +702,13 @@ exports.deleteProduct = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Product deleted successfully"
+      message: "Product deleted successfully",
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Failed to delete product",
-      error: error.message
+      error: error.message,
     });
   }
-}
+};
