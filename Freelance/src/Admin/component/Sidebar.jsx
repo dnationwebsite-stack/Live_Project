@@ -13,7 +13,7 @@ export function Sidebar({ activeTab, setActiveTab }) {
   return (
     <aside className="w-64 bg-card border-r border-border">
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-foreground">Aadmin</h1>
+        <h1 className="text-2xl font-bold text-foreground">Admin</h1>
       </div>
       <nav className="space-y-2 px-4">
         {menuItems.map((item) => {
