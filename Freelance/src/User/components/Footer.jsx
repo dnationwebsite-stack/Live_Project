@@ -134,7 +134,7 @@ export default function Footer() {
       {/* Bottom Section */}
       <div className="pt-8 border-t border-gray-300 flex flex-col items-center text-center">
         <p className="text-gray-400 text-sm">
-          Copyright © by Boot Store 2025. All rights reserved.
+          Copyright © by Dripnation 2025. All rights reserved.
         </p>
       </div>
 

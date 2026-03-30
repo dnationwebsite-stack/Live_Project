@@ -1,9 +1,9 @@
 import React from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination, Navigation } from "swiper/modules";
-import slide1 from "../../assets/slide1.png"
-import slide2 from "../../assets/slide2.png"
-import slide3 from "../../assets/slide3.png"
+import slide1 from "../../assets/slide1.jpeg"
+import slide2 from "../../assets/slide2.jpeg"
+import slide3 from "../../assets/slide3.jpeg"
 
 // Swiper core styles
 import "swiper/css";
