@@ -14,26 +14,16 @@ const saveShippingAddress = async (req, res) => {
       return res.status(400).json({ message: "All required address fields must be provided" });
     }
 
-    let order = await Order.findOne({ user: userId, status: "pending" });
+   const cart = await Cart.findOne({ userId });
+    if (!cart) return res.status(404).json({ message: "Cart not found" });
 
-    if (!order) {
-      order = new Order({
-        user: userId,
-        status: "pending",
-        paymentMethod: "COD",
-        paymentStatus: "pending",
-        items: [],
-        totalPrice: 0,
-      });
-    }
-
-    order.shippingAddress = { fullName, phoneNumber, line1, line2, city, state, postalCode };
-    await order.save();
+    cart.shippingAddress = { fullName, phoneNumber, line1, line2, city, state, postalCode };
+    await cart.save();
 
     res.status(200).json({
       success: true,
       message: "Shipping address saved successfully",
-      shippingAddress: order.shippingAddress,
+      shippingAddress: cart.shippingAddress,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server error while saving shipping address" });
@@ -91,7 +81,8 @@ const placeCODOrder = async (req, res) => {
     }
 
     // Step 3: Get shipping address
-    const pendingOrder = await Order.findOne({ user: userId, status: "pending" });
+    const pendingOrder = await Order.findOne({ user: userId, status: "pending" })
+     .sort({ createdAt: 1 });
     if (!pendingOrder || !pendingOrder.shippingAddress) {
       return res.status(400).json({ message: "No saved address found" });
     }
@@ -99,7 +90,7 @@ const placeCODOrder = async (req, res) => {
     // Step 4: Create new order
     const newOrder = new Order({
       user: userId,
-      shippingAddress: pendingOrder.shippingAddress,
+      shippingAddress: cart.shippingAddress,
       items: cart.products.map((item) => ({
         productId: item.productId?._id || item.productId,
         name: item.productId?.name,
@@ -111,7 +102,7 @@ const placeCODOrder = async (req, res) => {
       totalPrice: finalTotal,
       paymentMethod: "COD",
       paymentStatus: "pending",
-      status: "pending",
+      status: "confirmed",
     });
 
     await newOrder.save();
@@ -119,7 +110,6 @@ const placeCODOrder = async (req, res) => {
     cart.products = [];
     cart.totalPrice = 0;
     await cart.save();
-    await Order.deleteOne({ _id: pendingOrder._id });
 
     res.status(201).json({
       success: true,
@@ -133,19 +123,19 @@ const placeCODOrder = async (req, res) => {
 
 // orderController.js
 const getAllUserOrders = async (req, res) => {
-  console.log("========================================");
-  console.log("📥 GET /api/order/my-orders called");
-  console.log("========================================");
+  ("========================================");
+  ("📥 GET /api/order/my-orders called");
+  ("========================================");
   
   try {
     // Log the entire req.user object
-    console.log("🔍 req.user:", JSON.stringify(req.user, null, 2));
+    ("🔍 req.user:", JSON.stringify(req.user, null, 2));
     
     const userId = req.user?.id || req.user?._id;
-    console.log("🔍 Extracted userId:", userId);
+    ("🔍 Extracted userId:", userId);
     
     if (!userId) {
-      console.log("❌ No userId found! req.user structure:", req.user);
+      ("❌ No userId found! req.user structure:", req.user);
       return res.status(401).json({ 
         message: "Unauthorized - No user ID",
         debug: { 
@@ -155,15 +145,21 @@ const getAllUserOrders = async (req, res) => {
       });
     }
 
-    console.log("🔍 Querying orders for user:", userId);
+    ("🔍 Querying orders for user:", userId);
     
-    const orders = await Order.find({ user: userId })
+    const orders = await Order.find({ 
+      user: userId,
+  $or: [
+    { status: { $ne: "pending" } },           // ✅ all non-pending orders
+    { status: "pending", "items.0": { $exists: true } } // ✅ pending orders that have items
+  ]
+})
       .populate("items.productId", "name brand price image")
       .sort({ createdAt: -1 });
 
-    console.log(`✅ Found ${orders.length} orders`);
+    (`✅ Found ${orders.length} orders`);
 
-    console.log("Orders", typeof orders);
+    ("Orders", typeof orders);
     
 
 

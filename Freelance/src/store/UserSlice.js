@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 
 // Correct API Base (no HTTPS unless reverse proxy exists)
 const API_BASE = "https://dripnation.co.in/api/";
+// const API_BASE = "http://localhost:5000/api/";
 
 export const useUserStore = create(
   persist(
@@ -352,16 +353,20 @@ export const useUserStore = create(
 
       createRazorpayOrder: async (amount) => {
         const { token } = get();
+        console.log('first',amount)
+        console.log(token)
         try {
           set({ loading: true, error: null });
+          console.log("Calling API:", `${API_BASE}payment/create-order`);
           const res = await fetch(`${API_BASE}payment/create-order`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ amount }),
+            body: JSON.stringify({ amount: Number(amount) }),
           });
+          console.log("result ", res)
 
           const data = await res.json();
           if (!res.ok)
@@ -380,14 +385,21 @@ export const useUserStore = create(
         cartItems = null,
         shippingAddress = null
       ) => {
+        console.log("before");
+        
         try {
+          console.log("start");
+          
           if (!window.Razorpay) {
             throw new Error(
               "Razorpay SDK not loaded. Please check your internet connection."
             );
           }
 
+          console.log("hii");
           const orderData = await get().createRazorpayOrder(amount);
+
+          
 
           return new Promise((resolve, reject) => {
             const options = {

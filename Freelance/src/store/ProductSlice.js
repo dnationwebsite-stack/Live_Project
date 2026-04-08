@@ -3,6 +3,8 @@ import { persist } from "zustand/middleware";
 import { useUserStore } from "./UserSlice";
 
 const API_BASE = "https://dripnation.co.in/api";
+// const API_BASE = "http://localhost:5000/api";
+
 
 const useProductStore = create(
   persist(

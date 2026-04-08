@@ -25,7 +25,7 @@ exports.createOrder = async (req, res) => {
     const options = {
       amount: amount * 100, // Convert to paise
       currency,
-      receipt: `receipt_${user._id}_${Date.now()}`,
+      receipt: `receipt_${Math.random().toString(36).slice(2, 10)}`,
     };
 
     const order = await razorpay.orders.create(options);

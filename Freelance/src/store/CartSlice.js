@@ -2,6 +2,8 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
 const API_BASE = "https://dripnation.co.in/api"
+// const API_BASE = "http://localhost:5000/api";
+
 
 // Helper function to get token
 const getAuthToken = () => {
