@@ -14,16 +14,26 @@ const saveShippingAddress = async (req, res) => {
       return res.status(400).json({ message: "All required address fields must be provided" });
     }
 
-   const cart = await Cart.findOne({ userId });
-    if (!cart) return res.status(404).json({ message: "Cart not found" });
+  let order = await Order.findOne({ user: userId, status: "pending" });
 
-    cart.shippingAddress = { fullName, phoneNumber, line1, line2, city, state, postalCode };
-    await cart.save();
+    if (!order) {
+      order = new Order({
+        user: userId,
+        status: "pending",
+        paymentMethod: "COD",
+        paymentStatus: "pending",
+        items: [],
+        totalPrice: 0,
+      });
+    }
+
+    order.shippingAddress = { fullName, phoneNumber, line1, line2, city, state, postalCode };
+    await order.save();
 
     res.status(200).json({
       success: true,
       message: "Shipping address saved successfully",
-      shippingAddress: cart.shippingAddress,
+      shippingAddress: order.shippingAddress,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server error while saving shipping address" });
@@ -81,8 +91,7 @@ const placeCODOrder = async (req, res) => {
     }
 
     // Step 3: Get shipping address
-    const pendingOrder = await Order.findOne({ user: userId, status: "pending" })
-     .sort({ createdAt: 1 });
+   const pendingOrder = await Order.findOne({ user: userId, status: "pending" });
     if (!pendingOrder || !pendingOrder.shippingAddress) {
       return res.status(400).json({ message: "No saved address found" });
     }
@@ -102,7 +111,7 @@ const placeCODOrder = async (req, res) => {
       totalPrice: finalTotal,
       paymentMethod: "COD",
       paymentStatus: "pending",
-      status: "confirmed",
+      status: "pending",
     });
 
     await newOrder.save();
@@ -110,7 +119,7 @@ const placeCODOrder = async (req, res) => {
     cart.products = [];
     cart.totalPrice = 0;
     await cart.save();
-
+//  await Order.deleteOne({ _id: pendingOrder._id })
     res.status(201).json({
       success: true,
       message: "COD order placed successfully",
@@ -123,9 +132,7 @@ const placeCODOrder = async (req, res) => {
 
 // orderController.js
 const getAllUserOrders = async (req, res) => {
-  ("========================================");
-  ("📥 GET /api/order/my-orders called");
-  ("========================================");
+
   
   try {
     // Log the entire req.user object
