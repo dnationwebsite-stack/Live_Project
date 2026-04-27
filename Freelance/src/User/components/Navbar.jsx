@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import logo from "../../../public/logo1.png";
 import {
   AppBar,
   Toolbar,
@@ -299,18 +300,18 @@ export default function UrbanMonkeyHeader() {
             minWidth: 0,
             px: { xs: 0, md: 2 }
           }}>
-            <Link to="/" style={{ textDecoration: 'none', minWidth: 0 }}>
-              <Typography
-                variant="h6"
-                noWrap
+            <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+              <Box
+                component="img"
+                src={logo}
+                alt="Drip Nation Logo"
                 sx={{
-                  fontWeight: "bold",
-                  color: "black",
-                  fontSize: { xs: '1.8rem', md: '2rem' }
+                  height: { xs: 40, md: 75 },   // realistic size
+                  width: "auto",
+                  maxHeight: "100%",           // parent se bahar na nikle
+                  objectFit: "contain",
                 }}
-              >
-                DRIP NATION®
-              </Typography>
+              />
             </Link>
 
             {/* Search bar - hidden on small screens */}

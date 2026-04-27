@@ -9,8 +9,6 @@ import cat5 from "../../assets/jacket.png";
 import cat6 from "../../assets/Track_suit.png";
 
 const categories = [
-  { name: "Fan Version", image: cat1 },
-  { name: "Player Version", image: cat2 },
   { name: "Retro Jersey", image: cat3 },
   { name: "Accessories", image: cat4 },
   { name: "Jacket", image: cat5 },
@@ -30,24 +28,24 @@ const HomeCatGrid = () => {
         Categories
       </h2>
 
-      <div
-        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-6 place-items-center"
-      >
-        {categories.map((category, index) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-6 place-items-center">
+        {categories.map((category) => (
           <div
-            key={index}
+            key={category.name}
             className="flex flex-col items-center cursor-pointer"
-            onClick={() => handleCategoryClick(category.name)}
+            onClick={() => handleCategoryClick(category.name.toLowerCase())}
           >
-            <div
-              className="relative w-32 h-32 sm:w-36 sm:h-36 md:w-44 md:h-44 lg:w-48 lg:h-48 border border-gray-200 hover:shadow-lg transition-all duration-300 hover:scale-105 rounded-full overflow-hidden"
-            >
+            <div className="relative w-32 h-32 sm:w-36 sm:h-36 md:w-44 md:h-44 lg:w-48 lg:h-48 border border-gray-200 hover:shadow-lg transition-all duration-300 hover:scale-105 rounded-full overflow-hidden">
               <img
                 src={category.image}
+                alt={category.name}
                 className="w-full h-full object-cover"
               />
             </div>
-            <p className="mt-2 text-lg font-semibold text-gray-700">{category.name}</p>
+
+            <p className="mt-2 text-lg font-semibold text-gray-700">
+              {category.name}
+            </p>
           </div>
         ))}
       </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
+import { useParams } from "react-router-dom"
 import {
   Button,
   Card,
@@ -15,6 +16,7 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material"
+
 import ProductCard from "../components/Product"
 import useProductStore from "../../store/ProductSlice"
 
@@ -28,57 +30,69 @@ const sortOptions = [
 
 export default function ProductsPage() {
   const { products, fetchProducts } = useProductStore()
+  const { category } = useParams() // 🔥 URL se category
 
-  useEffect(() => {
-    fetchProducts()
-  }, [fetchProducts])
-
-  const categories = useMemo(() => ["All", ...Array.from(new Set(products.map(p => p.category))).filter(Boolean)], [products])
-  const subcategories = useMemo(() => ["All", ...Array.from(new Set(products.map(p => p.subcategory))).filter(Boolean)], [products])
-
-  const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedSubcategory, setSelectedSubcategory] = useState("All")
   const [priceRange, setPriceRange] = useState([0, 50000])
   const [showInStockOnly, setShowInStockOnly] = useState(false)
   const [sortBy, setSortBy] = useState("featured")
-  const [showFilters, setShowFilters] = useState(false) // 🔥 mobile default: false
+  const [showFilters, setShowFilters] = useState(false)
 
-  const filteredAndSortedProducts = useMemo(() => {
-    const filtered = products.filter(product => {
-      const matchesSearch =
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      const matchesCategory = selectedCategory === "All" || product.category === selectedCategory
-      const matchesSubcategory = selectedSubcategory === "All" || product.subcategory === selectedSubcategory
-      const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1]
-      const matchesStock = !showInStockOnly || product.inStock
+  useEffect(() => {
+    fetchProducts()
+  }, [fetchProducts])
 
-      return matchesSearch && matchesCategory && matchesSubcategory && matchesPrice && matchesStock
+  // 🔥 URL category sync
+  useEffect(() => {
+    if (category) {
+      setSelectedCategory(category.toLowerCase())
+    }
+  }, [category])
+
+  const categories = useMemo(() => {
+    return ["All", ...new Set(products.map(p => p.category?.toLowerCase()))]
+  }, [products])
+
+  const subcategories = useMemo(() => {
+    return ["All", ...new Set(products.map(p => p.subcategory))]
+  }, [products])
+
+  // 🔥 MAIN FILTER LOGIC FIXED
+  const filteredProducts = useMemo(() => {
+    let filtered = products.filter(product => {
+      const matchesCategory =
+        selectedCategory === "All" ||
+        product.category?.toLowerCase() === selectedCategory
+
+      const matchesSubcategory =
+        selectedSubcategory === "All" ||
+        product.subcategory === selectedSubcategory
+
+      const matchesPrice =
+        product.price >= priceRange[0] &&
+        product.price <= priceRange[1]
+
+      const matchesStock =
+        !showInStockOnly || product.inStock
+
+      return (
+        matchesCategory &&
+        matchesSubcategory &&
+        matchesPrice &&
+        matchesStock
+      )
     })
 
-    switch (sortBy) {
-      case "price-low":
-        filtered.sort((a, b) => a.price - b.price)
-        break
-      case "price-high":
-        filtered.sort((a, b) => b.price - a.price)
-        break
-      case "rating":
-        filtered.sort((a, b) => b.rating - a.rating)
-        break
-      case "newest":
-        filtered.sort((a, b) => b.id - a.id)
-        break
-      default:
-        break
-    }
+    // Sorting
+    if (sortBy === "price-low") filtered.sort((a, b) => a.price - b.price)
+    if (sortBy === "price-high") filtered.sort((a, b) => b.price - a.price)
+    if (sortBy === "rating") filtered.sort((a, b) => b.rating - a.rating)
 
     return filtered
-  }, [searchQuery, selectedCategory, selectedSubcategory, priceRange, showInStockOnly, sortBy, products])
+  }, [products, selectedCategory, selectedSubcategory, priceRange, showInStockOnly, sortBy])
 
   const resetFilters = () => {
-    setSearchQuery("")
     setSelectedCategory("All")
     setSelectedSubcategory("All")
     setPriceRange([0, 50000])
@@ -87,143 +101,140 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="min-h-screen mt-18">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="w-full px-5 py-4 flex items-center justify-between ">
-          <Typography variant="h5" className="text-foreground font-bold">
-            Products
-          </Typography>
+    <div className="min-h-screen bg-gray-50 mt-20">
 
-          {/* 🔥 MOBILE FILTER BUTTON */}
-          <Button className="lg:hidden" variant="outlined" onClick={() => setShowFilters(true)}>
-            Filters
-          </Button>
-        </div>
-      </header>
+      {/* HEADER */}
+      <div className="sticky top-0 bg-white z-20 shadow-sm px-5 py-4 flex justify-between items-center">
+        <Typography variant="h5" className="font-bold">
+          {selectedCategory !== "All"
+            ? selectedCategory.toUpperCase()
+            : "All Products"}
+        </Typography>
 
-      <div className="w-[90%] mx-auto px-4 py-6 flex gap-6">
-        {/* FILTER SIDEBAR (Desktop normal / Mobile FULL SCREEN) */}
+        <Button
+          className="lg:hidden"
+          variant="outlined"
+          onClick={() => setShowFilters(true)}
+        >
+          Filters
+        </Button>
+      </div>
+
+      <div className="flex w-[95%] mx-auto gap-6 py-6">
+
+        {/* FILTER SIDEBAR */}
         {showFilters && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 z-40 lg:hidden" onClick={() => setShowFilters(false)}></div>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => setShowFilters(false)}
+          />
         )}
 
-        <aside
-          className={`
-            ${showFilters ? "block" : "hidden"}
-            lg:block 
-            bg-white shadow-lg
-            lg:relative lg:w-80
+        <aside className={`
+          ${showFilters ? "block" : "hidden"} 
+          lg:block bg-white shadow rounded-xl p-4 
+          fixed lg:static w-full lg:w-72 h-full lg:h-auto z-50
+        `}>
 
-            /* Mobile fullscreen */
-            fixed lg:static
-            top-0 left-0 
-            w-full h-full 
-            z-50 
-            p-4 overflow-y-auto
-          `}
-        >
-          <Card className="bg-sidebar border-sidebar-border h-full overflow-y-auto">
-            <CardHeader title="Filters" className="text-sidebar-foreground sticky top-0 bg-sidebar z-10" />
-            <CardContent className="!space-y-6">
+          <Typography variant="h6" className="mb-4 font-semibold">
+            Filters
+          </Typography>
 
-              {/* Category */}
-              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-                <InputLabel>Category</InputLabel>
-                <Select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}>
-                  {categories.map(category => (
-                    <MenuItem key={category} value={category}>
-                      {category}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+          {/* Category */}
+          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+            <InputLabel id="category-label">Category</InputLabel>
+            <Select
+              labelId="category-label"
+              label="Category"
+              value={selectedCategory}
+              onChange={e => setSelectedCategory(e.target.value)}
+            >
+              {categories.map(cat => (
+                <MenuItem key={cat} value={cat}>
+                  {cat}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-              {/* Subcategory */}
-              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-                <InputLabel>Subcategory</InputLabel>
-                <Select value={selectedSubcategory} onChange={e => setSelectedSubcategory(e.target.value)}>
-                  {subcategories.map(subcategory => (
-                    <MenuItem key={subcategory} value={subcategory}>
-                      {subcategory}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+          {/* Subcategory */}
+          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+            <InputLabel id="subcategory-label">Subcategory</InputLabel>
+            <Select
+              labelId="subcategory-label"
+              label="Subcategory"
+              value={selectedSubcategory}
+              onChange={e => setSelectedSubcategory(e.target.value)}
+            >
+              {subcategories.map(sub => (
+                <MenuItem key={sub} value={sub}>
+                  {sub}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-              {/* Price */}
-              <div>
-                <Typography variant="body2">
-                  Price Range: ₹{priceRange[0]} - ₹{priceRange[1]}
-                </Typography>
-                <Slider
-                  value={priceRange}
-                  onChange={(e, newValue) => setPriceRange(newValue)}
-                  valueLabelDisplay="auto"
-                  max={50000}
-                  min={0}
-                  step={100}
-                />
-              </div>
+          {/* Price */}
+          <Typography variant="body2">
+            ₹{priceRange[0]} - ₹{priceRange[1]}
+          </Typography>
+          <Slider
+            value={priceRange}
+            onChange={(e, val) => setPriceRange(val)}
+            max={50000}
+          />
 
-              {/* In stock */}
-              <div className="flex items-center space-x-2">
-                <Checkbox checked={showInStockOnly} onChange={e => setShowInStockOnly(e.target.checked)} />
-                <Typography variant="body2" className="text-sidebar-foreground">
-                  In stock only
-                </Typography>
-              </div>
-            </CardContent>
+          {/* Stock */}
+          <div className="flex items-center mt-3">
+            <Checkbox
+              checked={showInStockOnly}
+              onChange={e => setShowInStockOnly(e.target.checked)}
+            />
+            <Typography>In Stock</Typography>
+          </div>
 
-            {/* Buttons */}
-            <CardActions className="flex gap-2 sticky bottom-0 bg-sidebar p-2 z-10">
-              <Button onClick={resetFilters} variant="outlined" size="small" className="flex-1 bg-transparent">
-                Reset
-              </Button>
-
-              {/* 🔥 APPLY FILTERS CLOSES MOBILE SIDEBAR */}
-              <Button
-                size="small"
-                className="flex-1"
-                onClick={() => setShowFilters(false)}
-              >
-                Apply Filters
-              </Button>
-            </CardActions>
-          </Card>
+          {/* Buttons */}
+          <div className="flex gap-2 mt-4">
+            <Button fullWidth variant="outlined" onClick={resetFilters}>
+              Reset
+            </Button>
+            <Button fullWidth onClick={() => setShowFilters(false)}>
+              Apply
+            </Button>
+          </div>
         </aside>
 
-        {/* MAIN CONTENT */}
-        <main className="flex-1 h-[120vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-6 sticky top-0 bg-card z-10 !py-5 !p-2 bg-white">
-            <Typography variant="body2" className="text-muted-foreground">
-              {filteredAndSortedProducts.length} products found
+        {/* PRODUCTS */}
+        <main className="flex-1">
+
+          <div className="flex justify-between mb-4">
+            <Typography>
+              {filteredProducts.length} Products
             </Typography>
 
             <FormControl size="small">
-              <Select value={sortBy} onChange={e => setSortBy(e.target.value)}>
-                {sortOptions.map(option => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
+              <Select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+              >
+                {sortOptions.map(opt => (
+                  <MenuItem key={opt.value} value={opt.value}>
+                    {opt.label}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
           </div>
 
-          {filteredAndSortedProducts.length === 0 ? (
-            <div className="text-center py-12">
-              <Typography variant="body2" className="text-muted-foreground">
-                No products found matching your criteria.
-              </Typography>
-              <Button onClick={resetFilters} variant="outlined" className="mt-4 bg-transparent">
-                Clear Filters
-              </Button>
+          {filteredProducts.length === 0 ? (
+            <div className="text-center mt-20">
+              <Typography>No products found</Typography>
+              <Button onClick={resetFilters}>Clear Filters</Button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredAndSortedProducts.map(product => (
-                <ProductCard key={product._id || product.id} product={product} />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {filteredProducts.map(product => (
+                <ProductCard key={product._id} product={product} />
               ))}
             </div>
           )}

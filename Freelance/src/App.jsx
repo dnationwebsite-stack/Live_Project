@@ -14,6 +14,7 @@ import Contact from "./User/quickLinks/Contact"
 import PaymentPolicy from "./User/quickLinks/PaymentPolicy"
 import PrivacyPolicy from "./User/quickLinks/PrivacyPolicy"
 import TermsConditions from "./User/quickLinks/TermsCondition"
+import ShippingPolicy from "./User/quickLinks/TermsCondition"
 
 // Protected Route Component for Admin
 const ProtectedAdminRoute = ({ children }) => {
@@ -62,7 +63,7 @@ function App() {
         <Route path="/payment-policy" element={<PaymentPolicy />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-conditions" element={<TermsConditions />} />
-        <Route path="/shipping-policy" element={<TermsConditions />} />
+        <Route path="/shipping-policy" element={<ShippingPolicy />} />
         <Route path="/detailpage/:id" element={<ProductDetailPage />} />
         
         {/* Catch-all route for 404 */}

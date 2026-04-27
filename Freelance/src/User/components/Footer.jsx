@@ -37,7 +37,6 @@ export default function Footer() {
               { name: "Payment Policy", path: "/payment-policy" },
               { name: "Privacy Policy", path: "/privacy-policy" },
               { name: "Shipping Policy", path: "/shipping-policy" },
-              { name: "Terms & Conditions", path: "/terms-conditions" },
             ].map((item, idx) => (
               <Link
                 key={idx}

@@ -35,7 +35,13 @@ export default function ProductManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const formRef = useRef(null);
 
-  const [categories, setCategories] = useState(["Jersey", "Boots"]);
+  const [categories, setCategories] = useState(["retro jersey", "accessories", "jacket", "track suit"]);
+  const subcategoryMap = {
+    "retro jersey": ["Fan version ", "Player version ", "Retro version"],
+    "accessories": ["cap", "bag", "gloves"],
+    "jacket": ["winter", "windbreaker"],
+    "track suit": ["training", "gym"]
+  };
   const [showCategoryInput, setShowCategoryInput] = useState(false);
   const [newCategory, setNewCategory] = useState("");
 
@@ -207,95 +213,95 @@ export default function ProductManagement() {
   };
 
   // Handle NEW image uploads
-const handleImageUpload = async (e) => {
-  const files = Array.from(e.target.files || []);
-  if (files.length === 0) return;
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-  const totalImages = formData.existingImages.length + formData.newImages.length + files.length;
-  if (totalImages > 10) {
-    toast.error("Maximum 10 images allowed per product");
-    return;
-  }
+    const totalImages = formData.existingImages.length + formData.newImages.length + files.length;
+    if (totalImages > 10) {
+      toast.error("Maximum 10 images allowed per product");
+      return;
+    }
 
-  // ✅ More aggressive compression options
-  const compressionOptions = {
-    maxSizeMB: 0.5, // ⬇️ Reduced from 1MB to 500KB
-    maxWidthOrHeight: 1200, // ⬇️ Reduced from 1920 to 1200
-    useWebWorker: true,
-    fileType: 'image/jpeg',
-    initialQuality: 0.7 // ⬇️ Reduced from 0.8 to 0.7
-  };
+    // ✅ More aggressive compression options
+    const compressionOptions = {
+      maxSizeMB: 0.5, // ⬇️ Reduced from 1MB to 500KB
+      maxWidthOrHeight: 1200, // ⬇️ Reduced from 1920 to 1200
+      useWebWorker: true,
+      fileType: 'image/jpeg',
+      initialQuality: 0.7 // ⬇️ Reduced from 0.8 to 0.7
+    };
 
-  const toastId = toast.loading("Compressing images...");
+    const toastId = toast.loading("Compressing images...");
 
-  try {
-    const compressedFiles = [];
-    const newPreviews = [];
+    try {
+      const compressedFiles = [];
+      const newPreviews = [];
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      
-      const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
-   
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
 
-      try {
-        // ✅ Compress the image
-        let compressedFile = await imageCompression(file, compressionOptions);
-        
-        // ✅ If still too large, compress more aggressively
-        if (compressedFile.size > 500 * 1024) { // If still > 500KB
-          compressedFile = await imageCompression(file, {
-            ...compressionOptions,
-            maxSizeMB: 0.3,
-            maxWidthOrHeight: 800,
-            initialQuality: 0.6
+        const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
+
+
+        try {
+          // ✅ Compress the image
+          let compressedFile = await imageCompression(file, compressionOptions);
+
+          // ✅ If still too large, compress more aggressively
+          if (compressedFile.size > 500 * 1024) { // If still > 500KB
+            compressedFile = await imageCompression(file, {
+              ...compressionOptions,
+              maxSizeMB: 0.3,
+              maxWidthOrHeight: 800,
+              initialQuality: 0.6
+            });
+          }
+
+          const compressedSizeMB = (compressedFile.size / 1024 / 1024).toFixed(2);
+
+          if (compressedFile.size > 1024 * 1024) {
+            toast.error(`${file.name} is too large even after compression`, { id: toastId });
+            continue;
+          }
+
+          const newFile = new File([compressedFile], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now()
           });
+
+          compressedFiles.push(newFile);
+          newPreviews.push(URL.createObjectURL(compressedFile));
+
+        } catch (compressionError) {
+          toast.error(`Failed to compress ${file.name}`, { id: toastId });
         }
-
-        const compressedSizeMB = (compressedFile.size / 1024 / 1024).toFixed(2);
-
-        if (compressedFile.size > 1024 * 1024) {
-          toast.error(`${file.name} is too large even after compression`, { id: toastId });
-          continue;
-        }
-
-        const newFile = new File([compressedFile], file.name, {
-          type: 'image/jpeg',
-          lastModified: Date.now()
-        });
-
-        compressedFiles.push(newFile);
-        newPreviews.push(URL.createObjectURL(compressedFile));
-
-      } catch (compressionError) {
-        toast.error(`Failed to compress ${file.name}`, { id: toastId });
-      }
-    }
-
-    if (compressedFiles.length > 0) {
-      const totalSize = compressedFiles.reduce((sum, f) => sum + f.size, 0);
-      const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
-      
-      if (totalSize > 5 * 1024 * 1024) {
-        toast.error(`Total size (${totalSizeMB}MB) exceeds 5MB limit. Please upload fewer images.`, { id: toastId });
-        newPreviews.forEach(preview => URL.revokeObjectURL(preview));
-        return;
       }
 
-      setFormData((prev) => ({ 
-        ...prev, 
-        newImages: [...prev.newImages, ...compressedFiles] 
-      }));
-      setNewImagePreviews((prev) => [...prev, ...newPreviews]);
-      
-      toast.success(`${compressedFiles.length} image(s) compressed (Total: ${totalSizeMB}MB)`, { id: toastId });
-    } else {
-      toast.error("No images could be processed", { id: toastId });
+      if (compressedFiles.length > 0) {
+        const totalSize = compressedFiles.reduce((sum, f) => sum + f.size, 0);
+        const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
+
+        if (totalSize > 5 * 1024 * 1024) {
+          toast.error(`Total size (${totalSizeMB}MB) exceeds 5MB limit. Please upload fewer images.`, { id: toastId });
+          newPreviews.forEach(preview => URL.revokeObjectURL(preview));
+          return;
+        }
+
+        setFormData((prev) => ({
+          ...prev,
+          newImages: [...prev.newImages, ...compressedFiles]
+        }));
+        setNewImagePreviews((prev) => [...prev, ...newPreviews]);
+
+        toast.success(`${compressedFiles.length} image(s) compressed (Total: ${totalSizeMB}MB)`, { id: toastId });
+      } else {
+        toast.error("No images could be processed", { id: toastId });
+      }
+    } catch (error) {
+      toast.error("Failed to process images", { id: toastId });
     }
-  } catch (error) {
-    toast.error("Failed to process images", { id: toastId });
-  }
-};
+  };
 
   // Remove NEW image (local only)
   const removeNewImage = (index) => {
@@ -536,12 +542,20 @@ const handleImageUpload = async (e) => {
 
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700">Subcategory *</label>
-                <input
-                  placeholder="e.g., Premier League"
+                <select
                   value={formData.subcategory}
-                  onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, subcategory: e.target.value })
+                  }
                   className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
-                />
+                >
+                  <option value="">Select Subcategory</option>
+                  {(subcategoryMap[formData.category] || []).map((sub) => (
+                    <option key={sub} value={sub}>
+                      {sub}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -774,10 +788,10 @@ const handleImageUpload = async (e) => {
                   Status:{" "}
                   <span
                     className={`font-bold ${product.status === "Out of Stock"
-                        ? "text-red-500"
-                        : product.status === "Limited"
-                          ? "text-orange-500"
-                          : "text-green-600"
+                      ? "text-red-500"
+                      : product.status === "Limited"
+                        ? "text-orange-500"
+                        : "text-green-600"
                       }`}
                   >
                     {product.status}
