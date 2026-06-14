@@ -15,6 +15,7 @@ import PaymentPolicy from "./User/quickLinks/PaymentPolicy"
 import PrivacyPolicy from "./User/quickLinks/PrivacyPolicy"
 import TermsConditions from "./User/quickLinks/TermsCondition"
 import ShippingPolicy from "./User/quickLinks/TermsCondition"
+import Toast from "./User/components/Toast" 
 
 // Protected Route Component for Admin
 const ProtectedAdminRoute = ({ children }) => {
@@ -41,6 +42,8 @@ function App() {
   
   return (
     <>
+
+    <Toast />
       {!isAdminRoute && <Navbar />}
       
       <Routes>

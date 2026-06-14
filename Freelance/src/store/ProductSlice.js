@@ -2,24 +2,34 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useUserStore } from "./UserSlice";
 
-const API_BASE = "https://dripnation.co.in/api";
-// const API_BASE = "http://localhost:5000/api";
-
+// const API_BASE = "https://dripnation.co.in/api";
+const API_BASE = "http://localhost:5000/api";
 
 const useProductStore = create(
   persist(
     (set, get) => ({
       products: [],
+      categories: [],          // ✅ NEW: distinct categories from DB
+      selectedCategory: "All", // ✅ NEW: shared filter state
       loading: false,
       error: null,
 
-      fetchProducts: async () => {
+      // ✅ NEW: set category from anywhere (HomeCatGrid, sidebar, etc.)
+      setSelectedCategory: (category) => {
+        set({ selectedCategory: category });
+      },
+
+      // ✅ FIXED: fetches from backend with optional category filter
+      fetchProducts: async (category = null) => {
         set({ loading: true, error: null });
-
         try {
-          const url = `${API_BASE}/product/getAllProduct`;
+          // Build URL with query param if category provided
+          const url = new URL(`${API_BASE}/product/getAllProduct`);
+          if (category && category !== "All") {
+            url.searchParams.set("category", category.toLowerCase());
+          }
 
-          const res = await fetch(url, {
+          const res = await fetch(url.toString(), {
             method: "GET",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -34,15 +44,40 @@ const useProductStore = create(
           }
 
           const data = await res.json();
-
           const products = data.data || [];
-
           set({ products, loading: false });
-
           return products;
         } catch (err) {
           set({ error: err.message, loading: false, products: [] });
           throw err;
+        }
+      },
+
+      // ✅ NEW: fetch distinct categories from backend
+      fetchCategories: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/product/categories`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          });
+
+          if (!res.ok) throw new Error("Failed to fetch categories");
+
+          const data = await res.json();
+          // Backend returns { success: true, data: ["mens", "womens", ...] }
+          const categories = ["All", ...(data.data || [])];
+          set({ categories });
+          return categories;
+        } catch (err) {
+          console.error("❌ fetchCategories ERROR:", err);
+          // Fallback: derive from existing products in store
+          const products = get().products;
+          const derived = [
+            "All",
+            ...new Set(products.map((p) => p.category).filter(Boolean)),
+          ];
+          set({ categories: derived });
         }
       },
 
@@ -66,7 +101,7 @@ const useProductStore = create(
           }
 
           const data = await res.json();
-          const product = data.product || data;
+          const product = data.data || data.product || data;
 
           set((state) => ({
             products: [...state.products, product],
@@ -86,10 +121,7 @@ const useProductStore = create(
           set({ loading: true, error: null });
 
           const token = useUserStore.getState().token;
-
-          if (!token) {
-            throw new Error("Unauthorized: Token missing");
-          }
+          if (!token) throw new Error("Unauthorized: Token missing");
 
           let formData;
           if (productData instanceof FormData) {
@@ -99,73 +131,37 @@ const useProductStore = create(
             if (productData.name) formData.append("name", productData.name);
             if (productData.brand) formData.append("brand", productData.brand);
             if (productData.price) formData.append("price", productData.price);
-            if (productData.category)
-              formData.append("category", productData.category);
-            if (productData.subcategory)
-              formData.append("subcategory", productData.subcategory);
-            if (productData.description)
-              formData.append("description", productData.description);
-            if (productData.status)
-              formData.append("status", productData.status);
-            if (productData.sizes) {
-              formData.append("sizes", JSON.stringify(productData.sizes));
-            }
+            if (productData.category) formData.append("category", productData.category);
+            if (productData.subcategory) formData.append("subcategory", productData.subcategory);
+            if (productData.description) formData.append("description", productData.description);
+            if (productData.status) formData.append("status", productData.status);
+            if (productData.sizes) formData.append("sizes", JSON.stringify(productData.sizes));
             if (productData.images && Array.isArray(productData.images)) {
               productData.images.forEach((image) => {
-                if (image instanceof File) {
-                  formData.append("images", image);
-                }
+                if (image instanceof File) formData.append("images", image);
               });
             }
           }
 
-          // ✅ Add detailed logging
-          console.log("📤 API_BASE:", API_BASE);
-          console.log("📤 Full URL:", `${API_BASE}/product/addProduct`);
-          console.log("📤 Token exists:", !!token);
-          console.log("📤 FormData contents:");
-          for (let pair of formData.entries()) {
-            if (pair[1] instanceof File) {
-              console.log(
-                `  ${pair[0]}:`,
-                `File(${pair[1].name}, ${(pair[1].size / 1024).toFixed(2)} KB)`
-              );
-            } else {
-              console.log(`  ${pair[0]}:`, pair[1]);
-            }
-          }
-
-          console.log("📤 Sending request...");
-
           const res = await fetch(`${API_BASE}/product/addProduct`, {
             method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              // DO NOT add Content-Type - browser sets it automatically for FormData
-            },
+            headers: { Authorization: `Bearer ${token}` },
             credentials: "include",
             body: formData,
           });
-
-          console.log("📥 Response received:", res.status, res.statusText);
 
           if (!res.ok) {
             let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
             try {
               const errorData = await res.json();
               errorMessage = errorData.message || errorMessage;
-              console.error("❌ Server error response:", errorData);
             } catch (e) {
-              const errorText = await res.text();
-              console.error("❌ Server error text:", errorText);
-              errorMessage = errorText || errorMessage;
+              errorMessage = (await res.text()) || errorMessage;
             }
             throw new Error(errorMessage);
           }
 
           const data = await res.json();
-          console.log("✅ Response data:", data);
-
           const product = data.data || data.product || data;
 
           set((state) => ({
@@ -173,46 +169,33 @@ const useProductStore = create(
             loading: false,
           }));
 
-          console.log("✅ Product added to store");
+          // Refresh categories in case new category was added
+          get().fetchCategories();
+
           return product;
         } catch (err) {
           console.error("❌ addProduct ERROR:", err);
-          console.error("❌ Error name:", err.name);
-          console.error("❌ Error message:", err.message);
-          console.error("❌ Error stack:", err.stack);
-
           set({ error: err.message, loading: false });
           throw err;
         }
       },
+
       updateProduct: async (id, data) => {
         set({ loading: true, error: null });
-
         try {
           const token = useUserStore.getState().token;
-
-          if (!token) {
-            throw new Error("Unauthorized: Token missing");
-          }
+          if (!token) throw new Error("Unauthorized: Token missing");
 
           const isFormData = data instanceof FormData;
           const options = {
             method: "PUT",
             credentials: "include",
             body: isFormData ? data : JSON.stringify(data),
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers: { Authorization: `Bearer ${token}` },
           };
+          if (!isFormData) options.headers["Content-Type"] = "application/json";
 
-          if (!isFormData) {
-            options.headers["Content-Type"] = "application/json";
-          }
-
-          const res = await fetch(
-            `${API_BASE}/product/updateProduct/${id}`,
-            options
-          );
+          const res = await fetch(`${API_BASE}/product/updateProduct/${id}`, options);
 
           if (!res.ok) {
             const errorData = await res.json().catch(() => ({}));
@@ -242,10 +225,7 @@ const useProductStore = create(
           set({ loading: true, error: null });
 
           const token = useUserStore.getState().token;
-
-          if (!token) {
-            throw new Error("Unauthorized: Token missing");
-          }
+          if (!token) throw new Error("Unauthorized: Token missing");
 
           const res = await fetch(`${API_BASE}/product/deleteProduct/${id}`, {
             method: "DELETE",
@@ -273,16 +253,10 @@ const useProductStore = create(
       },
 
       deleteImage: async (productId, imageId) => {
-        console.log("🔵 deleteImage:", productId, imageId);
-
         try {
           set({ loading: true, error: null });
-
           const token = useUserStore.getState().token;
-
-          if (!token) {
-            throw new Error("Unauthorized: Token missing");
-          }
+          if (!token) throw new Error("Unauthorized: Token missing");
 
           const res = await fetch(
             `${API_BASE}/product/deleteImage/${productId}/${imageId}`,
@@ -302,9 +276,6 @@ const useProductStore = create(
           }
 
           const response = await res.json();
-
-          console.log("✅ Image deleted");
-
           if (response.success) {
             set((state) => ({
               products: state.products.map((p) =>
@@ -322,16 +293,10 @@ const useProductStore = create(
       },
 
       setPrimaryImage: async (productId, imageId) => {
-        console.log("🔵 setPrimaryImage:", productId, imageId);
-
         try {
           set({ loading: true, error: null });
-
           const token = useUserStore.getState().token;
-
-          if (!token) {
-            throw new Error("Unauthorized: Token missing");
-          }
+          if (!token) throw new Error("Unauthorized: Token missing");
 
           const res = await fetch(
             `${API_BASE}/product/setPrimaryImage/${productId}/${imageId}`,
@@ -351,9 +316,6 @@ const useProductStore = create(
           }
 
           const response = await res.json();
-
-          console.log("✅ Primary image set");
-
           if (response.success) {
             set((state) => ({
               products: state.products.map((p) =>
@@ -371,16 +333,10 @@ const useProductStore = create(
       },
 
       reorderImages: async (productId, imageOrder) => {
-        console.log("🔵 reorderImages:", productId);
-
         try {
           set({ loading: true, error: null });
-
           const token = useUserStore.getState().token;
-
-          if (!token) {
-            throw new Error("Unauthorized: Token missing");
-          }
+          if (!token) throw new Error("Unauthorized: Token missing");
 
           const res = await fetch(
             `${API_BASE}/product/reorderImages/${productId}`,
@@ -401,9 +357,6 @@ const useProductStore = create(
           }
 
           const response = await res.json();
-
-          console.log("✅ Images reordered");
-
           if (response.success) {
             set((state) => ({
               products: state.products.map((p) =>
@@ -421,16 +374,10 @@ const useProductStore = create(
       },
 
       addImages: async (productId, images) => {
-        console.log("🔵 addImages:", productId);
-
         try {
           set({ loading: true, error: null });
-
           const token = useUserStore.getState().token;
-
-          if (!token) {
-            throw new Error("Unauthorized: Token missing");
-          }
+          if (!token) throw new Error("Unauthorized: Token missing");
 
           const formData = new FormData();
           images.forEach((image) => formData.append("images", image));
@@ -440,9 +387,7 @@ const useProductStore = create(
             {
               method: "POST",
               credentials: "include",
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
+              headers: { Authorization: `Bearer ${token}` },
               body: formData,
             }
           );
@@ -453,9 +398,6 @@ const useProductStore = create(
           }
 
           const response = await res.json();
-
-          console.log("✅ Images added");
-
           if (response.success) {
             set((state) => ({
               products: state.products.map((p) =>
@@ -476,6 +418,7 @@ const useProductStore = create(
     }),
     {
       name: "product-store",
+      // ✅ Don't persist selectedCategory — always start fresh
       partialize: (state) => ({ products: state.products }),
     }
   )

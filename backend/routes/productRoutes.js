@@ -2,35 +2,84 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  createProduct,      // Changed from addProduct
+  createProduct,
   updateProduct,
   deleteProduct,
   getAllProducts,
   getProductById,
-  addImages,          // Added
-  deleteImage,        // Added
-  setPrimaryImage,    // Added
-  reorderImages       // Added
+  getCategories,       // ✅ NEW
+  getSubcategories,    // ✅ NEW
+  addImages,
+  deleteImage,
+  setPrimaryImage,
+  reorderImages,
 } = require("../controllers/productController");
 
 const { authMiddleware } = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/multer");
 
-// GET routes
-router.get("/getAllProduct", getAllProducts);
+// ─────────────────────────────────────────────────
+// PUBLIC GET routes
+// NOTE: Specific routes (/categories, /subcategories)
+// MUST come before parameterised routes (/:id)
+// ─────────────────────────────────────────────────
+router.get("/getAllProduct",      getAllProducts);
+router.get("/categories",         getCategories);        // ✅ GET /api/products/categories
+router.get("/subcategories",      getSubcategories);     // ✅ GET /api/products/subcategories?category=mens
 router.get("/getProductById/:id", getProductById);
 
-// POST routes
-router.post("/addProduct", authMiddleware("admin"), upload.array("images", 10), createProduct); // Changed to upload.array
-router.post("/addImages/:id", authMiddleware("admin"), upload.array("images", 5), addImages);
+// ─────────────────────────────────────────────────
+// ADMIN POST routes
+// ─────────────────────────────────────────────────
+router.post(
+  "/addProduct",
+  authMiddleware("admin"),
+  upload.array("images", 10),
+  createProduct
+);
 
-// PUT routes
-router.put("/updateProduct/:id", authMiddleware("admin"),upload.array("images", 10), updateProduct);
-router.put("/setPrimaryImage/:id/:imageId", authMiddleware("admin"), setPrimaryImage);
-router.put("/reorderImages/:id", authMiddleware("admin"), reorderImages);
+router.post(
+  "/addImages/:id",
+  authMiddleware("admin"),
+  upload.array("images", 5),
+  addImages
+);
 
-// DELETE routes
-router.delete("/deleteProduct/:id", authMiddleware("admin"), deleteProduct);
-router.delete("/deleteImage/:id/:imageId", authMiddleware("admin"), deleteImage);
+// ─────────────────────────────────────────────────
+// ADMIN PUT routes
+// ─────────────────────────────────────────────────
+router.put(
+  "/updateProduct/:id",
+  authMiddleware("admin"),
+  upload.array("images", 10),
+  updateProduct
+);
+
+router.put(
+  "/setPrimaryImage/:id/:imageId",
+  authMiddleware("admin"),
+  setPrimaryImage
+);
+
+router.put(
+  "/reorderImages/:id",
+  authMiddleware("admin"),
+  reorderImages
+);
+
+// ─────────────────────────────────────────────────
+// ADMIN DELETE routes
+// ─────────────────────────────────────────────────
+router.delete(
+  "/deleteProduct/:id",
+  authMiddleware("admin"),
+  deleteProduct
+);
+
+router.delete(
+  "/deleteImage/:id/:imageId",
+  authMiddleware("admin"),
+  deleteImage
+);
 
 module.exports = router;

@@ -1,9 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import useToastStore from "./ToastSlice";
 
-// Correct API Base (no HTTPS unless reverse proxy exists)
-const API_BASE = "https://dripnation.co.in/api/";
-// const API_BASE = "http://localhost:5000/api/";
+// const API_BASE = "https://dripnation.co.in/api/";
+const API_BASE = "http://localhost:5000/api/";
+
+const toast = (message, severity = "success", duration = 3000) => {
+  useToastStore.getState().showToast(message, severity, duration);
+};
 
 export const useUserStore = create(
   persist(
@@ -20,7 +24,6 @@ export const useUserStore = create(
       selectedShippingAddressId: null,
       selectedAddress: null,
 
-      // ✅ ADD: Dashboard state
       dashboardStats: {
         totalProducts: 0,
         totalOrders: 0,
@@ -30,20 +33,15 @@ export const useUserStore = create(
 
       setSelectedAddress: (address) => set({ selectedAddress: address }),
       selectShippingAddress: (id) => set({ selectedShippingAddressId: id }),
-      setShippingAddresses: (addresses) =>
-        set({ shippingAddresses: addresses }),
+      setShippingAddresses: (addresses) => set({ shippingAddresses: addresses }),
 
-      // ✅ ADD: Fetch dashboard summary function
       fetchDashboardSummary: async () => {
         const { token, isAuthenticated } = get();
-
         if (!isAuthenticated || !token) {
           console.warn("User not authenticated");
           return;
         }
-
         set({ loading: true, error: null });
-
         try {
           const res = await fetch(`${API_BASE}dash/dashboard`, {
             method: "GET",
@@ -54,12 +52,9 @@ export const useUserStore = create(
             credentials: "include",
           });
 
-          if (!res.ok) {
-            throw new Error("Failed to fetch dashboard data");
-          }
+          if (!res.ok) throw new Error("Failed to fetch dashboard data");
 
           const data = await res.json();
-
           set({
             dashboardStats: {
               totalProducts: data.totalProducts || 0,
@@ -71,10 +66,7 @@ export const useUserStore = create(
           });
         } catch (err) {
           console.error("Error fetching dashboard summary:", err);
-          set({
-            error: err.message,
-            loading: false,
-          });
+          set({ error: err.message, loading: false });
         }
       },
 
@@ -91,9 +83,11 @@ export const useUserStore = create(
           const data = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(data.message || "Failed to send OTP");
 
+          toast("OTP sent to your email 📧", "success")
           return data;
         } catch (err) {
           set({ error: err.message });
+          toast(err.message || "Failed to send OTP", "error")
           throw err;
         } finally {
           set({ loading: false });
@@ -120,16 +114,12 @@ export const useUserStore = create(
           };
           const token = data.token ?? data.accessToken ?? null;
 
-          set({
-            user,
-            token,
-            isAuthenticated: true,
-            error: null,
-          });
-
+          set({ user, token, isAuthenticated: true, error: null });
+          toast(`Welcome back! 👋`, "success")
           return { user, token, raw: data };
         } catch (err) {
           set({ error: err.message });
+          toast(err.message || "Invalid OTP", "error")
           throw err;
         } finally {
           set({ loading: false });
@@ -160,19 +150,18 @@ export const useUserStore = create(
               recentOrders: [],
             },
           });
-        } catch {}
+          toast("Logged out successfully", "info")
+        } catch (err) {
+          toast("Logout failed", "error")
+        }
       },
 
       saveAddress: async (address) => {
         const { token, isAuthenticated } = get();
-
-        if (!isAuthenticated || !token) {
-          throw new Error("Please login to save address");
-        }
+        if (!isAuthenticated || !token) throw new Error("Please login to save address");
 
         try {
           set({ loading: true, error: null });
-
           const res = await fetch(`${API_BASE}users/saveAddress`, {
             method: "POST",
             headers: {
@@ -193,9 +182,11 @@ export const useUserStore = create(
             ],
           }));
 
+          toast("Address saved successfully 📍", "success")
           return data.addresses;
         } catch (err) {
           set({ error: err.message });
+          toast(err.message || "Failed to save address", "error")
           throw err;
         } finally {
           set({ loading: false });
@@ -204,7 +195,6 @@ export const useUserStore = create(
 
       getAddresses: async () => {
         const { token, isAuthenticated } = get();
-
         if (!isAuthenticated || !token) {
           set({ addresses: [], shippingAddresses: [] });
           return [];
@@ -212,57 +202,38 @@ export const useUserStore = create(
 
         try {
           set({ loading: true, error: null });
-
           const res = await fetch(`${API_BASE}users/getAddresses`, {
             method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers: { Authorization: `Bearer ${token}` },
             credentials: "include",
           });
 
           if (res.status === 401) {
-            set({
-              addresses: [],
-              shippingAddresses: [],
-              loading: false,
-              error: null,
-            });
+            set({ addresses: [], shippingAddresses: [], loading: false, error: null });
             return [];
           }
 
           const data = await res.json();
-          if (!res.ok)
-            throw new Error(data.message || "Failed to fetch addresses");
+          if (!res.ok) throw new Error(data.message || "Failed to fetch addresses");
 
           set({
             addresses: data.addresses || [],
             shippingAddresses: data.addresses || [],
             loading: false,
           });
-
           return data.addresses || [];
         } catch (err) {
-          set({
-            error: err.message,
-            addresses: [],
-            shippingAddresses: [],
-            loading: false,
-          });
+          set({ error: err.message, addresses: [], shippingAddresses: [], loading: false });
           return [];
         }
       },
 
       saveShippingAddress: async (address) => {
         const { token, isAuthenticated } = get();
-
-        if (!isAuthenticated || !token) {
-          throw new Error("Please login to save shipping address");
-        }
+        if (!isAuthenticated || !token) throw new Error("Please login to save shipping address");
 
         try {
           set({ loading: true, error: null });
-
           const res = await fetch(`${API_BASE}order/shippingAddress`, {
             method: "POST",
             headers: {
@@ -274,19 +245,19 @@ export const useUserStore = create(
           });
 
           const data = await res.json();
-          if (!res.ok)
-            throw new Error(data.message || "Failed to save shipping address");
+          if (!res.ok) throw new Error(data.message || "Failed to save shipping address");
 
           const savedAddress = data.address || data;
-
           set((state) => ({
             selectedAddress: savedAddress,
             shippingAddresses: [...state.shippingAddresses, savedAddress],
           }));
 
+          toast("Shipping address saved 📍", "success")
           return savedAddress;
         } catch (err) {
           set({ error: err.message });
+          toast(err.message || "Failed to save shipping address", "error")
           throw err;
         } finally {
           set({ loading: false });
@@ -295,56 +266,47 @@ export const useUserStore = create(
 
       placeCODOrder: async () => {
         const { token, selectedAddress, isAuthenticated } = get();
-
-        if (!isAuthenticated || !token) {
-          throw new Error("Please login to place order");
-        }
-
+        if (!isAuthenticated || !token) throw new Error("Please login to place order");
         if (!selectedAddress) throw new Error("No address selected");
 
-        const res = await fetch(`${API_BASE}order/cod`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            paymentMode: "COD",
-            address: selectedAddress,
-          }),
-        });
+        try {
+          const res = await fetch(`${API_BASE}order/cod`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: "include",
+            body: JSON.stringify({ paymentMode: "COD", address: selectedAddress }),
+          });
 
-        const data = await res.json();
-        if (!res.ok)
-          throw new Error(data.message || "Failed to place COD order");
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || "Failed to place COD order");
 
-        return data;
+          toast("Order placed successfully! 🎉", "success", 4000)
+          return data;
+        } catch (err) {
+          toast(err.message || "Failed to place order", "error")
+          throw err;
+        }
       },
 
       checkWelcomeDiscount: async () => {
         const { token, isAuthenticated } = get();
-
-        if (!isAuthenticated || !token) {
-          return { isEligible: false, discountPercentage: 0 };
-        }
+        if (!isAuthenticated || !token) return { isEligible: false, discountPercentage: 0 };
 
         try {
-          const res = await fetch(
-            `${API_BASE}payment/check-discount?_t=${Date.now()}`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              credentials: "include",
-            }
-          );
+          const res = await fetch(`${API_BASE}payment/check-discount?_t=${Date.now()}`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: "include",
+          });
 
           const data = await res.json();
           if (!res.ok) return { isEligible: false, discountPercentage: 0 };
-
           return data;
         } catch {
           return { isEligible: false, discountPercentage: 0 };
@@ -353,11 +315,8 @@ export const useUserStore = create(
 
       createRazorpayOrder: async (amount) => {
         const { token } = get();
-        console.log('first',amount)
-        console.log(token)
         try {
           set({ loading: true, error: null });
-          console.log("Calling API:", `${API_BASE}payment/create-order`);
           const res = await fetch(`${API_BASE}payment/create-order`, {
             method: "POST",
             headers: {
@@ -366,40 +325,26 @@ export const useUserStore = create(
             },
             body: JSON.stringify({ amount: Number(amount) }),
           });
-          console.log("result ", res)
 
           const data = await res.json();
-          if (!res.ok)
-            throw new Error(data.message || "Failed to create Razorpay order");
+          if (!res.ok) throw new Error(data.message || "Failed to create Razorpay order");
           return data.order;
         } catch (err) {
           set({ error: err.message });
+          toast(err.message || "Failed to initiate payment", "error")
           throw err;
         } finally {
           set({ loading: false });
         }
       },
 
-      initiateRazorpayPayment: async (
-        amount,
-        cartItems = null,
-        shippingAddress = null
-      ) => {
-        console.log("before");
-        
+      initiateRazorpayPayment: async (amount, cartItems = null, shippingAddress = null) => {
         try {
-          console.log("start");
-          
           if (!window.Razorpay) {
-            throw new Error(
-              "Razorpay SDK not loaded. Please check your internet connection."
-            );
+            throw new Error("Razorpay SDK not loaded. Please check your internet connection.");
           }
 
-          console.log("hii");
           const orderData = await get().createRazorpayOrder(amount);
-
-          
 
           return new Promise((resolve, reject) => {
             const options = {
@@ -426,58 +371,42 @@ export const useUserStore = create(
                     const savedAddress =
                       sessionStorage.getItem("shippingAddress") ||
                       localStorage.getItem("shippingAddress");
-                    if (savedAddress) {
-                      address = JSON.parse(savedAddress);
-                    }
+                    if (savedAddress) address = JSON.parse(savedAddress);
                   }
 
-                  if (!items || items.length === 0) {
-                    throw new Error("Cart is empty. Cannot create order.");
-                  }
+                  if (!items || items.length === 0) throw new Error("Cart is empty. Cannot create order.");
+                  if (!address) throw new Error("Shipping address is required.");
 
-                  if (!address) {
-                    throw new Error("Shipping address is required.");
-                  }
-
-                  const verifyRes = await fetch(
-                    `${API_BASE}payment/verify-payment`,
-                    {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${get().token}`,
+                  const verifyRes = await fetch(`${API_BASE}payment/verify-payment`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${get().token}`,
+                    },
+                    body: JSON.stringify({
+                      razorpay_order_id: response.razorpay_order_id,
+                      razorpay_payment_id: response.razorpay_payment_id,
+                      razorpay_signature: response.razorpay_signature,
+                      orderDetails: {
+                        items,
+                        shippingAddress: address,
+                        totalPrice: amount,
                       },
-                      body: JSON.stringify({
-                        razorpay_order_id: response.razorpay_order_id,
-                        razorpay_payment_id: response.razorpay_payment_id,
-                        razorpay_signature: response.razorpay_signature,
-                        orderDetails: {
-                          items,
-                          shippingAddress: address,
-                          totalPrice: amount,
-                        },
-                      }),
-                    }
-                  );
+                    }),
+                  });
 
                   const verifyData = await verifyRes.json();
+                  if (!verifyRes.ok) throw new Error(verifyData.message || "Payment verification failed");
 
-                  if (!verifyRes.ok) {
-                    throw new Error(
-                      verifyData.message || "Payment verification failed"
-                    );
-                  }
-
-                  // ✅ FIX: Show different messages based on whether discount was applied
-                  if (
-                    verifyData.isFirstOrder &&
-                    verifyData.discountApplied > 0
-                  ) {
-                    alert(
-                      `✅ Payment successful! Welcome discount of ₹${verifyData.discountApplied} applied. Order placed!`
-                    );
+                  // ✅ Replaced alert() with toast
+                  if (verifyData.isFirstOrder && verifyData.discountApplied > 0) {
+                    toast(
+                      `Payment successful! Welcome discount of ₹${verifyData.discountApplied} applied 🎉`,
+                      "success",
+                      5000
+                    )
                   } else {
-                    alert("✅ Payment successful and order placed!");
+                    toast("Payment successful! Order placed 🎉", "success", 4000)
                   }
 
                   resolve({
@@ -488,11 +417,9 @@ export const useUserStore = create(
                     isFirstOrder: verifyData.isFirstOrder,
                   });
 
-                  setTimeout(() => {
-                    window.location.href = "/orders";
-                  }, 1500);
+                  setTimeout(() => { window.location.href = "/orders"; }, 1500);
                 } catch (verifyErr) {
-                  alert("Failed: " + verifyErr.message);
+                  toast(verifyErr.message || "Payment verification failed", "error")
                   reject(verifyErr);
                 }
               },
@@ -501,27 +428,24 @@ export const useUserStore = create(
                 email: get().user?.email || "",
                 contact: get().user?.phone || "",
               },
-              theme: {
-                color: "#000000",
-              },
+              theme: { color: "#000000" },
               modal: {
                 ondismiss: function () {
+                  toast("Payment cancelled", "warning")
                   reject(new Error("Payment cancelled by user"));
                 },
               },
             };
 
             const rzp = new window.Razorpay(options);
-
             rzp.on("payment.failed", function (response) {
-              alert(`Payment failed: ${response.error.description}`);
+              toast(`Payment failed: ${response.error.description}`, "error")
               reject(new Error(response.error.description));
             });
-
             rzp.open();
           });
         } catch (err) {
-          alert("Payment initiation failed: " + err.message);
+          toast(err.message || "Payment initiation failed", "error")
           throw err;
         }
       },
@@ -538,52 +462,47 @@ export const useUserStore = create(
             credentials: "include",
           });
           const data = await res.json();
-
-          if (!res.ok || !data.success)
-            throw new Error(data.message || "Failed to fetch users");
-
+          if (!res.ok || !data.success) throw new Error(data.message || "Failed to fetch users");
           set({ customers: data.users || [] });
           return data.users;
         } catch (err) {
           set({ error: err.message });
+          toast(err.message || "Failed to fetch users", "error")
           throw err;
         } finally {
           set({ loading: false });
         }
       },
 
-     fetchUserOrders: async () => {
-  const { token } = get();
-  
-  try {
-    set({ loading: true, error: null });
+      fetchUserOrders: async () => {
+        const { token } = get();
+        try {
+          set({ loading: true, error: null });
+          const res = await fetch(`${API_BASE}order/my-orders`, {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
 
-    const res = await fetch(`${API_BASE}order/my-orders`, {
-      method: "GET",
-      credentials: "include",
-      headers: { 
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || "Failed to fetch orders");
+          }
+
+          const data = await res.json();
+          set({ orders: data.orders || [], loading: false });
+        } catch (error) {
+          set({ loading: false });
+        }
       },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json();
-      throw new Error(errData.message || "Failed to fetch orders");
-    }
-
-    const data = await res.json();
-    set({ orders: data.orders || [], loading: false });
-  } catch (error) {
-    set({ loading: false });
-  }
-},
 
       fetchAllOrders: async () => {
         const { token } = get();
         try {
           set({ loading: true, error: null });
-
           const res = await fetch(`${API_BASE}order/all-orders`, {
             method: "GET",
             headers: {
@@ -594,9 +513,7 @@ export const useUserStore = create(
           });
 
           const data = await res.json();
-          if (!res.ok)
-            throw new Error(data.message || "Failed to fetch all orders");
-
+          if (!res.ok) throw new Error(data.message || "Failed to fetch all orders");
           set({ orders: data.orders || [], loading: false });
           return data.orders;
         } catch (error) {
@@ -604,68 +521,29 @@ export const useUserStore = create(
         }
       },
 
-     handleStatusChange: async (orderId, newStatus) => {
-  const { token } = get(); // ✅ Get the token from store
-  
-  try {
-    const res = await fetch(`${API_BASE}order/status/${orderId}`, {
-      method: "PUT",
-      credentials: "include",
-      headers: { 
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // ✅ ADD THIS LINE
-      },
-      body: JSON.stringify({ status: newStatus }),
-    });
-
-    const data = await res.json();
-    if (res.ok) {
-      alert(`Order status updated to ${newStatus}`);
-      await get().fetchUserOrders();
-    } else {
-      alert(data.message);
-    }
-  } catch (error) {
-    console.error("❌ Update status error:", error);
-  }
-},
-
-      dashboardStats: {
-        totalProducts: 0,
-        totalOrders: 0,
-        totalCustomers: 0,
-        recentOrders: [],
-      },
-
-      fetchDashboardSummary: async () => {
+      handleStatusChange: async (orderId, newStatus) => {
+        const { token } = get();
         try {
-          set({ loading: true, error: null });
-
-          const res = await fetch(`${API_BASE}dash/dashboard`, {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
+          const res = await fetch(`${API_BASE}order/status/${orderId}`, {
+            method: "PUT",
             credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ status: newStatus }),
           });
 
           const data = await res.json();
-          if (!res.ok)
-            throw new Error(
-              data.message || "Failed to fetch dashboard summary"
-            );
-
-          set({
-            dashboardStats: {
-              totalProducts: data.totalProducts || 0,
-              totalOrders: data.totalOrders || 0,
-              totalCustomers: data.totalCustomers || 0,
-              recentOrders: data.recentOrders || [],
-            },
-            loading: false,
-          });
-
-          return data;
-        } catch (err) {
-          set({ error: err.message, loading: false });
+          if (res.ok) {
+            toast(`Order status updated to ${newStatus} ✅`, "success")
+            await get().fetchUserOrders();
+          } else {
+            toast(data.message || "Failed to update status", "error")
+          }
+        } catch (error) {
+          console.error("❌ Update status error:", error);
+          toast("Failed to update order status", "error")
         }
       },
 
@@ -678,13 +556,12 @@ export const useUserStore = create(
           });
 
           const data = await response.json();
+          if (!response.ok) throw new Error(data.message || "Failed to resend OTP");
 
-          if (!response.ok) {
-            throw new Error(data.message || "Failed to resend OTP");
-          }
-
+          toast("OTP resent successfully 📧", "success")
           return data;
         } catch (error) {
+          toast(error.message || "Failed to resend OTP", "error")
           throw error;
         }
       },

@@ -1,25 +1,38 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import useProductStore from "../../store/ProductSlice";
 
-import cat1 from "../../assets/Fan-version.png";
-import cat2 from "../../assets/Player-version.png";
 import cat3 from "../../assets/Retro.jpg";
 import cat4 from "../../assets/Accessories.png";
 import cat5 from "../../assets/jacket.png";
 import cat6 from "../../assets/Track_suit.png";
 
+// ✅ Hardcoded display categories with images
+// "value" must EXACTLY match what's stored in DB (lowercase)
 const categories = [
-  { name: "Retro Jersey", image: cat3 },
-  { name: "Accessories", image: cat4 },
-  { name: "Jacket", image: cat5 },
-  { name: "Track Suit", image: cat6 },
+  { name: "Retro Jersey", value: "retro jersey", image: cat3 },
+  { name: "Accessories",  value: "accessories",  image: cat4 },
+  { name: "Jacket",       value: "jacket",        image: cat5 },
+  { name: "Track Suit",   value: "track suit",    image: cat6 },
 ];
 
 const HomeCatGrid = () => {
   const navigate = useNavigate();
+  const { setSelectedCategory, fetchProducts, fetchCategories } = useProductStore();
 
-  const handleCategoryClick = (category) => {
-    navigate("/cartPage", { state: { category } });
+  // Pre-fetch categories on mount so CartPage loads instantly
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  const handleCategoryClick = (categoryValue) => {
+    // ✅ FIX: Set in Zustand store — CartPage reads from store, not route state
+    setSelectedCategory(categoryValue);
+
+    // Pre-fetch filtered products so CartPage shows them immediately
+    fetchProducts(categoryValue);
+
+    navigate("/cartPage");
   };
 
   return (
@@ -31,9 +44,9 @@ const HomeCatGrid = () => {
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-6 place-items-center">
         {categories.map((category) => (
           <div
-            key={category.name}
+            key={category.value}
             className="flex flex-col items-center cursor-pointer"
-            onClick={() => handleCategoryClick(category.name.toLowerCase())}
+            onClick={() => handleCategoryClick(category.value)}
           >
             <div className="relative w-32 h-32 sm:w-36 sm:h-36 md:w-44 md:h-44 lg:w-48 lg:h-48 border border-gray-200 hover:shadow-lg transition-all duration-300 hover:scale-105 rounded-full overflow-hidden">
               <img
